@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';">
+    <title>Enter API Key</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 10px 15px;
+            background-color: #007aff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .error {
+            color: red;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+
+        .radio-group {
+            margin-bottom: 15px;
+        }
+
+        .radio-option {
+            display: inline-block;
+            margin-right: 15px;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>API Key Required</h2>
+    <p>Please select an AI provider and enter your API key to use this application.</p>
+
+    <div class="radio-group">
+        <div class="radio-option">
+            <input type="radio" id="gemini" name="provider" value="gemini" checked>
+            <label for="gemini">Google Gemini</label>
+        </div>
+        <div class="radio-option">
+            <input type="radio" id="openai" name="provider" value="openai">
+            <label for="openai">OpenAI</label>
+        </div>
+    </div>
+
+    <label for="apiKey">API Key:</label>
+    <input type="password" id="apiKey" name="apiKey">
+    <button id="saveButton">Save Key</button>
+    <p id="errorMessage" class="error" style="display: none;"></p>
+    <script src="./api_key_prompt.js"></script>
+</body>
+
+</html>

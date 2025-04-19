@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
+    <link rel="stylesheet" href="style.css">
+    <title>AI Assistant Overlay</title>
+</head>
+
+<body>
+    <div id="app-container">
+        <div class="section">
+            <label for="input-textarea">Your Input (Edit as needed):</label>
+            <textarea id="input-textarea" rows="6"></textarea>
+        </div>
+
+        <!-- New screenshot section -->
+        <div id="screenshot-section" class="section hidden">
+            <div id="screenshot-header">
+                <label>Screenshot:</label>
+                <button id="remove-screenshot-button" title="Remove Screenshot">×</button>
+            </div>
+            <div id="screenshot-container">
+                <img id="screenshot-img" src="" alt="Screenshot">
+            </div>
+            <div id="custom-instructions">
+                <label for="instructions-textarea">Custom Instructions (Optional):</label>
+                <textarea id="instructions-textarea" rows="2"
+                    placeholder="Enter any specific instructions for analyzing this screenshot..."></textarea>
+            </div>
+        </div>
+
+        <div id="controls" class="section">
+            <button id="submit-button">Submit to AI</button>
+            <button id="dismiss-button">Dismiss</button>
+            <button id="settings-button" class="settings-button" title="Settings">⚙</button>
+            <div id="shortcut-hints">
+                <div>Ctrl+Shift+S to capture screenshot</div>
+                <div>Ctrl+R to reset tool</div>
+            </div>
+            <div id="loading-indicator" class="hidden">Working...</div>
+        </div>
+
+        <div class="section">
+            <label for="response-textarea">AI Response:</label>
+            <textarea id="response-textarea" rows="8" readonly></textarea>
+        </div>
+    </div>
+
+    <script src="./renderer.js"></script>
+</body>
+
+</html>

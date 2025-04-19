@@ -1,0 +1,241 @@
+/* style.css */
+:root {
+    --bg-color-inactive: rgba(30, 30, 30, 0.85);
+    --bg-color-active: rgba(35, 35, 35, 0.95);
+    --text-color: #e0e0e0;
+    --label-color: #b0b0b0;
+    --border-color: #555;
+    --input-bg: rgba(50, 50, 50, 0.8);
+    --button-bg: #007aff;
+    --button-hover-bg: #0056b3;
+    --dismiss-bg: #666;
+    --dismiss-hover-bg: #444;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
+        Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: transparent;
+    /* Crucial for transparent window */
+    color: var(--text-color);
+    font-size: 14px;
+    overflow: hidden;
+    /* Prevent scrollbars on body */
+    height: 100vh;
+}
+
+#app-container {
+    background-color: var(--bg-color-inactive);
+    /* Use variable */
+    padding: 15px;
+    border-radius: 8px;
+    box-sizing: border-box;
+    height: 100%;
+    /* Fill the body */
+    display: flex;
+    flex-direction: column;
+    transition: background-color 0.2s ease-in-out;
+    overflow-y: auto;
+    /* Allow vertical scrolling if needed */
+}
+
+/* Maybe make slightly more opaque when active (optional) */
+/* body:focus-within #app-container {
+    background-color: var(--bg-color-active);
+} */
+
+.section {
+    margin-bottom: 12px;
+}
+
+.section:last-child {
+    margin-bottom: 0;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--label-color);
+}
+
+textarea {
+    width: 100%;
+    box-sizing: border-box;
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 8px;
+    font-size: 13px;
+    resize: none;
+    /* Disable manual resizing */
+}
+
+textarea:focus {
+    outline: none;
+    border-color: var(--button-bg);
+    box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.3);
+}
+
+textarea:read-only {
+    cursor: default;
+    background-color: rgba(40, 40, 40, 0.7);
+    /* Slightly different bg if readonly */
+}
+
+/* Controls should always be visible */
+#controls {
+    position: sticky;
+    bottom: 0;
+    background-color: var(--bg-color-inactive);
+    padding: 10px 0;
+    margin: 0 -15px;
+    padding-left: 15px;
+    padding-right: 15px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    /* Spacing between buttons/indicator */
+}
+
+button {
+    padding: 6px 14px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: background-color 0.2s ease, opacity 0.2s ease;
+}
+
+#submit-button {
+    background-color: var(--button-bg);
+    color: white;
+}
+
+#submit-button:hover {
+    background-color: var(--button-hover-bg);
+}
+
+#submit-button:disabled {
+    background-color: #555;
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+#dismiss-button {
+    background-color: var(--dismiss-bg);
+    color: white;
+}
+
+#dismiss-button:hover {
+    background-color: var(--dismiss-hover-bg);
+}
+
+#loading-indicator {
+    font-size: 12px;
+    color: var(--label-color);
+    margin-left: auto;
+    /* Push indicator to the right */
+}
+
+/* Make response area flexible */
+#response-textarea {
+    flex-grow: 1;
+    /* Allow textarea to fill remaining space */
+    min-height: 50px;
+    /* Ensure minimum height */
+}
+
+/* Utility class to hide elements visually but keep accessible */
+.hidden {
+    display: none;
+    /* Alternative: keep in layout but hide */
+    /* opacity: 0;
+    visibility: hidden; */
+}
+
+/* Screenshot Section Styles */
+#screenshot-section {
+    margin-top: 10px;
+    background-color: var(--input-bg);
+    border-radius: 4px;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+}
+
+#screenshot-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+#remove-screenshot-button {
+    background: none;
+    border: none;
+    color: var(--label-color);
+    font-size: 18px;
+    padding: 0 5px;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+#remove-screenshot-button:hover {
+    color: #ff4d4d;
+}
+
+#screenshot-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 10px;
+    max-height: 250px;
+    /* Increased but reasonable max height */
+    overflow: hidden;
+    border-radius: 3px;
+    border: 1px solid var(--border-color);
+}
+
+#screenshot-img {
+    max-width: 100%;
+    max-height: 250px;
+    /* Make sure image respects container size */
+    object-fit: contain;
+}
+
+#custom-instructions {
+    margin-top: 8px;
+}
+
+#instructions-textarea {
+    font-size: 12px;
+    min-height: 40px;
+}
+
+#shortcut-hints {
+    font-size: 11px;
+    color: var(--label-color);
+    margin-left: auto;
+    opacity: 0.7;
+    text-align: right;
+}
+
+#shortcut-hints div {
+    margin-bottom: 2px;
+}
+
+#settings-button {
+    background-color: var(--dismiss-bg);
+    color: white;
+    font-size: 16px;
+    padding: 6px 10px;
+}
+
+#settings-button:hover {
+    background-color: var(--dismiss-hover-bg);
+}

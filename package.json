@@ -1,0 +1,60 @@
+{
+  "name": "ai-overlay-app",
+  "version": "1.0.0",
+  "description": "AI Assistant Overlay (Gemini)",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win"
+  },
+  "keywords": [],
+  "author": "Tonya",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^29.1.5",
+    "electron-builder": "^26.0.12"
+  },
+  "dependencies": {
+    "electron-store": "^10.0.1"
+  },
+  "build": {
+    "appId": "com.yourapp.aioverlaygemini",
+    "productName": "AI Overlay Assistant",
+    "files": [
+      "main.js",
+      "preload.js",
+      "preload_api_key.js",
+      "index.html",
+      "style.css",
+      "renderer.js",
+      "api_key_prompt.html",
+      "api_key_prompt.js",
+      "node_modules/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.utilities",
+      "icon": "build/icon.icns",
+      "target": [
+        "dmg"
+      ]
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
