@@ -11,11 +11,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     const saveButton = document.getElementById('save-button');
     const cancelButton = document.getElementById('cancel-button');
 
-    // Make sure the UI elements are found
-    if (!saveButton || !cancelButton) {
-        console.error('Button elements not found!');
-    } else {
-        console.log('Buttons loaded successfully');
+    // Force button setup with direct click handlers
+    function setupButtons() {
+        // Remove any existing listeners to be safe
+        const newSaveButton = saveButton.cloneNode(true);
+        const newCancelButton = cancelButton.cloneNode(true);
+
+        saveButton.parentNode.replaceChild(newSaveButton, saveButton);
+        cancelButton.parentNode.replaceChild(newCancelButton, cancelButton);
+
+        // Re-attach references
+        const saveBtn = document.getElementById('save-button');
+        const cancelBtn = document.getElementById('cancel-button');
+
+        // Direct onclick property assignment (more reliable in packaged apps)
+        saveBtn.onclick = function () {
+            handleSave();
+            return false;
+        };
+
+        cancelBtn.onclick = function () {
+            console.log('Cancel clicked - direct handler');
+            window.electronAPI.closeSettingsWindow();
+            return false;
+        };
     }
 
     // Load current settings
@@ -39,37 +58,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Error loading settings:', error);
     }
 
-    // Define window close function for DMG compatibility
-    const closeSettingsWindow = () => {
-        console.log('Attempting to close settings window');
-        try {
-            // Try multiple methods to ensure window closes
-            if (window.electronAPI && window.electronAPI.closeSettingsWindow) {
-                console.log('Using custom close method');
-                window.electronAPI.closeSettingsWindow();
-            } else {
-                console.log('Using standard window.close');
-                window.close();
-            }
-        } catch (error) {
-            console.error('Error closing window:', error);
-        }
-    };
+    // Save handler function
+    async function handleSave() {
+        console.log('Save function called');
 
-    // Save button click handler
-    saveButton.addEventListener('click', async (e) => {
-        console.log('Save button clicked');
-        e.preventDefault();
-
-        const selectedProvider = geminiRadio.checked ? 'gemini' : 'openai';
-        const geminiKey = geminiKeyInput.value.trim();
-        const openaiKey = openaiKeyInput.value.trim();
-        const openaiModel = openaiModelSelect.value;
+        // Get current values
+        const selectedProvider = document.getElementById('gemini').checked ? 'gemini' : 'openai';
+        const geminiKey = document.getElementById('gemini-key').value.trim();
+        const openaiKey = document.getElementById('openai-key').value.trim();
+        const openaiModel = document.getElementById('openai-model').value;
 
         console.log('Saving provider:', selectedProvider);
-        console.log('OpenAI model:', openaiModel);
 
-        // Validate that at least the selected provider has a key
+        // Validate inputs
         if ((selectedProvider === 'gemini' && !geminiKey) ||
             (selectedProvider === 'openai' && !openaiKey)) {
             alert(`Please enter an API key for ${selectedProvider === 'gemini' ? 'Google Gemini' : 'OpenAI'}.`);
@@ -78,30 +79,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             console.log('Sending data to main process...');
-            const result = await window.electronAPI.saveSettings({
+
+            // Use direct method call to save settings
+            window.electronAPI.saveAndClose({
                 provider: selectedProvider,
                 geminiKey: geminiKey,
                 openaiKey: openaiKey,
                 openaiModel: openaiModel
             });
 
-            console.log('Save result:', result);
-            if (result.success) {
-                console.log('Settings saved successfully, closing window');
-                closeSettingsWindow();
-            } else {
-                alert(`Error saving settings: ${result.error}`);
-            }
         } catch (error) {
-            console.error('Error saving settings:', error);
+            console.error('Error in save handler:', error);
             alert('An error occurred while saving settings.');
         }
-    });
+    }
 
-    // Cancel button click handler
-    cancelButton.addEventListener('click', (e) => {
-        console.log('Cancel button clicked');
-        e.preventDefault();
-        closeSettingsWindow();
-    });
+    // Set up buttons with direct handlers
+    setupButtons();
 }); 

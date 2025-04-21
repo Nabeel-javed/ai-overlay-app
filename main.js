@@ -13,12 +13,8 @@ let settingsWindow; // Add settings window reference
 let store; // Declare globally, initialize later
 const MOVE_STEP = 20; // Pixels to move the window per hotkey press
 const MODEL_CONFIG = {
-    "gpt-o3mini-high": {
-        modelName: "o3-mini",
-        baseUrl: "https://api.openai.com/v1/chat/completions"
-    },
     "o4mini-high": {
-        modelName: "o4-mini",
+        modelName: "o4-mini-high",
         baseUrl: "https://api.openai.com/v1/chat/completions"
     },
     "4.1": {
@@ -505,7 +501,7 @@ ipcMain.handle('get-settings', async (event) => {
         provider: store.get('apiProvider') || 'gemini',
         geminiKey: store.get('googleApiKey') || '',
         openaiKey: store.get('openaiApiKey') || '',
-        openaiModel: store.get('openaiModel') || 'gpt-o3mini-high'
+        openaiModel: store.get('openaiModel') || 'gpt-o4mini-high'
     };
 });
 
@@ -549,6 +545,60 @@ ipcMain.handle('save-settings', async (event, settings) => {
 // --- IPC Handler: Open Settings ---
 ipcMain.on('open-settings', () => {
     createSettingsWindow();
+});
+
+// --- IPC Handler: Close Settings Window ---
+ipcMain.on('close-settings-window', () => {
+    console.log('Received close-settings-window request');
+    if (settingsWindow && !settingsWindow.isDestroyed()) {
+        settingsWindow.close();
+    }
+});
+
+// --- IPC Handler: Combined Save and Close ---
+ipcMain.on('save-and-close', (event, settings) => {
+    console.log('Received save-and-close request');
+
+    try {
+        // Save settings directly
+        if (settings.provider) {
+            store.set('apiProvider', settings.provider);
+        }
+
+        if (settings.geminiKey) {
+            store.set('googleApiKey', settings.geminiKey.trim());
+        }
+
+        if (settings.openaiKey) {
+            store.set('openaiApiKey', settings.openaiKey.trim());
+        }
+
+        if (settings.openaiModel) {
+            store.set('openaiModel', settings.openaiModel);
+        }
+
+        console.log('Settings saved via direct method');
+
+        // Force close the window with timeout as fallback
+        if (settingsWindow && !settingsWindow.isDestroyed()) {
+            try {
+                settingsWindow.close();
+                console.log('Settings window closed');
+            } catch (closeError) {
+                console.error('Error closing window:', closeError);
+            }
+
+            // Force destroy as fallback if close fails
+            setTimeout(() => {
+                if (settingsWindow && !settingsWindow.isDestroyed()) {
+                    console.log('Forcing window destruction as fallback');
+                    settingsWindow.destroy();
+                }
+            }, 100);
+        }
+    } catch (error) {
+        console.error('Error in save-and-close handler:', error);
+    }
 });
 
 // --- IPC Handler: Call AI API ---
@@ -678,7 +728,7 @@ async function callGeminiApi(apiKey, textInput, customInstructions, screenshotDa
 // Function to call the OpenAI API
 async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot) {
     // Determine the correct model config based on settings and screenshot status
-    const storedModel = store.get('openaiModel') || 'gpt-o3mini-high';
+    const storedModel = store.get('openaiModel') || 'gpt-o4mini-high';
     const selectedModel = hasScreenshot ? '4.1' : storedModel;
     const modelConfig = MODEL_CONFIG[selectedModel];
     const apiUrl = modelConfig.baseUrl;
@@ -748,6 +798,7 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
         messages: messages,
         max_completion_tokens: 4096,
         // temperature: 0.7
+        // reasoning_effort: "high"
     };
 
     // Call the OpenAI API
