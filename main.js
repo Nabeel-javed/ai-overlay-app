@@ -14,12 +14,12 @@ let store; // Declare globally, initialize later
 const MOVE_STEP = 20; // Pixels to move the window per hotkey press
 const MODEL_CONFIG = {
     "o4mini-high": {
-        modelName: "o4-mini-high",
-        baseUrl: "https://api.openai.com/v1/chat/completions"
+        modelName: "o4-mini",
+        baseUrl: "https://api.openai.com/v1/responses"
     },
     "4.1": {
         modelName: "gpt-4.1",
-        baseUrl: "https://api.openai.com/v1/chat/completions"
+        baseUrl: "https://api.openai.com/v1/responses"
     }
 };
 let licenseCheckInterval = null;
@@ -57,7 +57,6 @@ function createApiKeyPromptWindow() {
     apiKeyWindow.on('closed', () => {
         apiKeyWindow = null; // Clean up reference
         // If main window still doesn't exist (e.g., user closed prompt without saving)
-        // and app is still running, maybe quit or show prompt again? For now, do nothing.
         // if (!mainWindow || mainWindow.isDestroyed()) {
         //     // Consider app behavior here - maybe quit if key is mandatory?
         //     // app.quit();
@@ -501,7 +500,8 @@ ipcMain.handle('get-settings', async (event) => {
         provider: store.get('apiProvider') || 'gemini',
         geminiKey: store.get('googleApiKey') || '',
         openaiKey: store.get('openaiApiKey') || '',
-        openaiModel: store.get('openaiModel') || 'gpt-o4mini-high'
+        openaiModel: store.get('openaiModel') || 'o4mini-high',
+        enableReasoning: store.get('enableReasoning') || false
     };
 });
 
@@ -529,6 +529,10 @@ ipcMain.handle('save-settings', async (event, settings) => {
         if (settings.openaiModel) {
             store.set('openaiModel', settings.openaiModel);
         }
+
+        // Save reasoning toggle
+        store.set('enableReasoning', !!settings.enableReasoning);
+        console.log('Reasoning enabled:', !!settings.enableReasoning);
 
         // Close settings window
         if (settingsWindow && !settingsWindow.isDestroyed()) {
@@ -576,6 +580,10 @@ ipcMain.on('save-and-close', (event, settings) => {
         if (settings.openaiModel) {
             store.set('openaiModel', settings.openaiModel);
         }
+
+        // Save reasoning toggle
+        store.set('enableReasoning', !!settings.enableReasoning);
+        console.log('Reasoning enabled:', !!settings.enableReasoning);
 
         console.log('Settings saved via direct method');
 
@@ -668,7 +676,6 @@ async function callGeminiApi(apiKey, textInput, customInstructions, screenshotDa
             temperature: 0.7,
             topK: 32,
             topP: 1,
-            maxOutputTokens: 4096,
         }
     };
 
@@ -728,78 +735,83 @@ async function callGeminiApi(apiKey, textInput, customInstructions, screenshotDa
 // Function to call the OpenAI API
 async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot) {
     // Determine the correct model config based on settings and screenshot status
-    const storedModel = store.get('openaiModel') || 'gpt-o4mini-high';
+    const storedModel = store.get('openaiModel') || 'o4mini-high';
     const selectedModel = hasScreenshot ? '4.1' : storedModel;
     const modelConfig = MODEL_CONFIG[selectedModel];
     const apiUrl = modelConfig.baseUrl;
 
     console.log(`Using OpenAI model: ${modelConfig.modelName}`);
 
+    // Check if reasoning is enabled
+    const enableReasoning = store.get('enableReasoning') || false;
+    console.log(`Reasoning enabled: ${enableReasoning}`);
+
     // Create request headers
     const headers = {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        'Authorization': `Bearer ${apiKey}`,
+        // 'OpenAI-Beta': 'responses-2024-07-23'  // Required header for responses API
     };
 
-    // Build the request body
-    const messages = [];
+    // Define the system instructions
+    const systemInstructions = "You are a helpful assistant analyzing user input. Provide concise, accurate responses.";
 
-    // Create system message
-    messages.push({
-        role: 'system',
-        content: 'You are a helpful assistant analyzing user input. Provide concise, accurate responses.'
-    });
-
-    // Prepare user message content
-    let userContent = [];
+    // Build the content for the user message
+    const userMessageContent = [];
 
     // Add text if provided
     if (textInput) {
-        userContent.push({
-            type: 'text',
+        userMessageContent.push({
+            type: "input_text",
             text: textInput
         });
     }
 
     // Add custom instructions if provided
     if (customInstructions) {
-        if (textInput) {
-            userContent.push({
-                type: 'text',
-                text: `Custom Instructions: ${customInstructions}`
-            });
-        } else {
-            userContent.push({
-                type: 'text',
-                text: customInstructions
-            });
-        }
+        userMessageContent.push({
+            type: "input_text",
+            text: `Custom Instructions: ${customInstructions}`
+        });
     }
 
     // Add screenshot if available
     if (hasScreenshot && screenshotData) {
-        userContent.push({
-            type: 'image_url',
-            image_url: {
-                url: screenshotData,
-                detail: 'high'
+        userMessageContent.push({
+            type: "input_image",
+            image: {
+                data: screenshotData.split(',')[1], // Remove the data:image/png;base64, prefix
+                media_type: "image/png"
             }
         });
     }
 
-    // Add user message
-    messages.push({
-        role: 'user',
-        content: userContent
-    });
+    // Create the input message array
+    const inputMessages = [
+        {
+            type: "message",
+            role: "user",
+            content: userMessageContent
+        }
+    ];
 
+    // Build the new request body format for Responses API
     const requestBody = {
         model: modelConfig.modelName,
-        messages: messages,
-        max_completion_tokens: 4096,
+        instructions: systemInstructions, // Use the top-level instructions parameter
+        input: inputMessages, // Use the message array structure
         // temperature: 0.7
-        // reasoning_effort: "high"
     };
+
+    // Add reasoning only for o4-mini model (not for 4.1) if enabled
+    if (selectedModel === 'o4mini-high' && enableReasoning) {
+        console.log('Adding reasoning to request for o4-mini');
+        requestBody.reasoning = {
+            effort: "high"
+        };
+    }
+
+    console.log('Final API request payload:', JSON.stringify(requestBody, null, 2));
 
     // Call the OpenAI API
     const response = await fetch(apiUrl, {
@@ -811,6 +823,10 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
     // Parse the response
     const responseData = await response.json();
 
+    // Log the response for debugging
+    console.log('API response status:', response.status);
+    console.log('API response data:', JSON.stringify(responseData, null, 2));
+
     // Check for errors in the response
     if (!response.ok) {
         const error = responseData.error || { message: 'Unknown API error' };
@@ -818,11 +834,20 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
         return { error: `API Error: ${error.message}` };
     }
 
-    // Extract the text from the response
-    if (responseData.choices && responseData.choices.length > 0 &&
-        responseData.choices[0].message && responseData.choices[0].message.content) {
-        const textResponse = responseData.choices[0].message.content;
-        return { success: textResponse };
+    // Extract the text from the new response format
+    if (responseData.output && responseData.output.length > 0) {
+        for (const item of responseData.output) {
+            if (item.type === 'message' &&
+                item.content &&
+                item.content.length > 0) {
+                for (const contentItem of item.content) {
+                    if (contentItem.type === 'output_text') {
+                        return { success: contentItem.text };
+                    }
+                }
+            }
+        }
+        return { error: 'Could not find text in the response' };
     } else {
         return { error: 'No valid response from OpenAI' };
     }

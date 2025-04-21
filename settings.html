@@ -154,6 +154,42 @@
             border-radius: 50% !important;
             background-color: #007aff !important;
         }
+
+        /* Checkbox styling */
+        .checkbox-option {
+            display: flex !important;
+            align-items: center !important;
+            margin-bottom: 8px !important;
+        }
+
+        input[type="checkbox"] {
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+            appearance: none !important;
+            width: 18px !important;
+            height: 18px !important;
+            border: 2px solid #555 !important;
+            border-radius: 4px !important;
+            outline: none !important;
+            background-color: #3a3a3a !important;
+            position: relative !important;
+            vertical-align: middle !important;
+            margin-right: 8px !important;
+        }
+
+        input[type="checkbox"]:checked {
+            border-color: #007aff !important;
+            background-color: #007aff !important;
+        }
+
+        input[type="checkbox"]:checked:after {
+            content: "✓" !important;
+            position: absolute !important;
+            color: white !important;
+            font-size: 14px !important;
+            top: -2px !important;
+            left: 2px !important;
+        }
     </style>
     <title>Settings</title>
 </head>
@@ -188,10 +224,16 @@
     <div class="form-group" id="openai-model-group">
         <label for="openai-model">OpenAI Model:</label>
         <select id="openai-model">
-            <option value="gpt-o3mini-high">gpt o3mini high (Text only)</option>
-            <option value="o4mini-high">o4 mini high (Text only)</option>
-            <option value="4.1">4.1 (Screenshot)</option>
+            <option value="o4mini-high">o4 Mini </option>
+            <option value="4.1">GPT-4.1 (Screenshot)</option>
         </select>
+    </div>
+
+    <div class="form-group" id="reasoning-toggle-group">
+        <div class="checkbox-option">
+            <input type="checkbox" id="enable-reasoning" name="enable-reasoning">
+            <label for="enable-reasoning">Enable Reasoning (o4- Mini only)</label>
+        </div>
     </div>
 
     <div class="buttons">
