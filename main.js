@@ -9,7 +9,21 @@ let mainWindow;
 let apiKeyWindow;
 let settingsWindow; // Add settings window reference
 let store; // Declare globally, initialize later
-const MOVE_STEP = 15; // Pixels to move the window per hotkey press
+const MOVE_STEP = 20; // Pixels to move the window per hotkey press
+const MODEL_CONFIG = {
+    "gpt-o3mini-high": {
+        modelName: "o3-mini",
+        baseUrl: "https://api.openai.com/v1/chat/completions"
+    },
+    "o4mini-high": {
+        modelName: "o4-mini",
+        baseUrl: "https://api.openai.com/v1/chat/completions"
+    },
+    "4.1": {
+        modelName: "gpt-4.1",
+        baseUrl: "https://api.openai.com/v1/chat/completions"
+    }
+};
 
 // --- Function to create the API Key Prompt Window ---
 function createApiKeyPromptWindow() {
@@ -460,7 +474,8 @@ ipcMain.handle('get-settings', async (event) => {
     return {
         provider: store.get('apiProvider') || 'gemini',
         geminiKey: store.get('googleApiKey') || '',
-        openaiKey: store.get('openaiApiKey') || ''
+        openaiKey: store.get('openaiApiKey') || '',
+        openaiModel: store.get('openaiModel') || 'gpt-o3mini-high'
     };
 });
 
@@ -481,6 +496,10 @@ ipcMain.handle('save-settings', async (event, settings) => {
 
         if (settings.openaiKey) {
             store.set('openaiApiKey', settings.openaiKey.trim());
+        }
+
+        if (settings.openaiModel) {
+            store.set('openaiModel', settings.openaiModel);
         }
 
         // Close settings window
@@ -626,8 +645,13 @@ async function callGeminiApi(apiKey, textInput, customInstructions, screenshotDa
 
 // Function to call the OpenAI API
 async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot) {
-    // Base URL for the OpenAI API
-    const apiUrl = 'https://api.openai.com/v1/chat/completions';
+    // Determine the correct model config based on settings and screenshot status
+    const storedModel = store.get('openaiModel') || 'gpt-o3mini-high';
+    const selectedModel = hasScreenshot ? '4.1' : storedModel;
+    const modelConfig = MODEL_CONFIG[selectedModel];
+    const apiUrl = modelConfig.baseUrl;
+
+    console.log(`Using OpenAI model: ${modelConfig.modelName}`);
 
     // Create request headers
     const headers = {
@@ -688,10 +712,10 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
     });
 
     const requestBody = {
-        model: 'gpt-4o', // Using gpt-4o for vision capabilities
+        model: modelConfig.modelName,
         messages: messages,
-        max_tokens: 4096,
-        temperature: 0.7
+        max_completion_tokens: 4096,
+        // temperature: 0.7
     };
 
     // Call the OpenAI API

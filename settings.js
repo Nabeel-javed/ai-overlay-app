@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const openaiRadio = document.getElementById('openai');
     const geminiKeyInput = document.getElementById('gemini-key');
     const openaiKeyInput = document.getElementById('openai-key');
+    const openaiModelSelect = document.getElementById('openai-model');
     const saveButton = document.getElementById('save-button');
     const cancelButton = document.getElementById('cancel-button');
 
@@ -22,6 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Set API keys
         geminiKeyInput.value = settings.geminiKey || '';
         openaiKeyInput.value = settings.openaiKey || '';
+        openaiModelSelect.value = settings.openaiModel || "gpt-o3mini-high";
     } catch (error) {
         console.error('Error loading settings:', error);
     }
@@ -31,6 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const selectedProvider = geminiRadio.checked ? 'gemini' : 'openai';
         const geminiKey = geminiKeyInput.value.trim();
         const openaiKey = openaiKeyInput.value.trim();
+        const openaiModel = openaiModelSelect.value;
 
         // Validate that at least the selected provider has a key
         if ((selectedProvider === 'gemini' && !geminiKey) ||
@@ -43,7 +46,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const result = await window.electronAPI.saveSettings({
                 provider: selectedProvider,
                 geminiKey: geminiKey,
-                openaiKey: openaiKey
+                openaiKey: openaiKey,
+                openaiModel: openaiModel
             });
 
             if (result.success) {

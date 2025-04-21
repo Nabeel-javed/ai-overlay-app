@@ -32,6 +32,8 @@
       "renderer.js",
       "api_key_prompt.html",
       "api_key_prompt.js",
+      "settings.html",
+      "preload_settings.js",
       "node_modules/**/*"
     ],
     "mac": {
