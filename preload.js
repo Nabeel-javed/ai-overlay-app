@@ -49,7 +49,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // New channel: renderer process -> main process (one-way)
   // Sends a message to the main process to open the settings window
   // Usage in renderer.js: window.electronAPI.openSettings();
-  openSettings: () => ipcRenderer.send('open-settings')
+  openSettings: () => ipcRenderer.send('open-settings'),
+
+  // Add this new API for license updates
+  onLicenseUpdate: (callback) => {
+    ipcRenderer.on('license-status-update', (event, data) => {
+      callback(data);
+    })
+  }
 
   // Note: 'onSetInputText' was removed as the clipboard content is no longer
   // automatically pushed to the renderer via this preload script.

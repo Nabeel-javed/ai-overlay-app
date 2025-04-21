@@ -50,6 +50,12 @@ window.electronAPI.onResetTool(() => {
     resetTool();
 });
 
+// --- IPC Listener for license update ---
+window.electronAPI.onLicenseUpdate((data) => {
+    console.log(`License time remaining: ${data.hoursRemaining} hours`);
+    // Update your UI as needed
+});
+
 // Function to display the screenshot
 function displayScreenshot(dataUrl) {
     screenshotImg.src = dataUrl;

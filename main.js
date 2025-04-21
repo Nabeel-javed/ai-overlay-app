@@ -1,6 +1,8 @@
 // main.js
 const { app, BrowserWindow, globalShortcut, ipcMain, desktopCapturer, screen, Menu } = require('electron'); // Added Menu
 const path = require('path');
+const { machineIdSync } = require('node-machine-id');
+const fetch = require('node-fetch');
 // const Store = require('electron-store'); // <<< REMOVE THIS LINE
 // const fetch = require('node-fetch'); // Uncomment if using node-fetch instead of built-in fetch
 
@@ -24,6 +26,7 @@ const MODEL_CONFIG = {
         baseUrl: "https://api.openai.com/v1/chat/completions"
     }
 };
+let licenseCheckInterval = null;
 
 // --- Function to create the API Key Prompt Window ---
 function createApiKeyPromptWindow() {
@@ -80,6 +83,8 @@ function createSettingsWindow() {
         frame: true,
         title: "Settings",
         modal: true,
+        transparent: false, // Change to false for DMG compatibility
+        backgroundColor: '#2d2d2d', // Solid background color
         parent: (mainWindow && !mainWindow.isDestroyed()) ? mainWindow : null,
         webPreferences: {
             preload: path.join(__dirname, 'preload_settings.js'),
@@ -88,6 +93,9 @@ function createSettingsWindow() {
         },
         show: false
     });
+
+    // Prevent screen capture
+    settingsWindow.setContentProtection(true);
 
     settingsWindow.loadFile('settings.html');
 
@@ -369,6 +377,24 @@ app.whenReady().then(async () => {
         store.set('apiProvider', 'gemini');
     }
 
+    // LICENSE VERIFICATION - Add this part
+    try {
+        const isLicenseValid = await checkLicenseAndHandle();
+        if (!isLicenseValid) return; // App will quit if license isn't valid
+
+        // Set up periodic license checks every 3 minutes and 57 seconds
+        licenseCheckInterval = setInterval(async () => {
+            await checkLicenseAndHandle();
+        }, (3 * 60 + 57) * 1000); // 3 minutes and 57 seconds in milliseconds
+    } catch (error) {
+        console.error("License verification failed:", error);
+        // Decide how to handle verification errors
+        // For strict enforcement, uncomment the next 2 lines:
+        // dialog.showMessageBox({type: 'error', title: 'Verification Error', message: 'License verification failed.', buttons: ['Quit']})
+        // .then(() => app.quit());
+        // return;
+    }
+
     // Check for API Key on startup
     const apiKey = getApiKey();
     if (!apiKey) {
@@ -397,6 +423,10 @@ app.whenReady().then(async () => {
 app.on('will-quit', () => {
     globalShortcut.unregisterAll(); // Unregister all shortcuts on quit
     console.log("Unregistered all global shortcuts.");
+    if (licenseCheckInterval) {
+        clearInterval(licenseCheckInterval);
+        licenseCheckInterval = null;
+    }
 });
 
 // --- All Windows Closed Event ---
@@ -486,6 +516,8 @@ ipcMain.handle('save-settings', async (event, settings) => {
     }
 
     try {
+        console.log('Saving settings:', settings);
+
         if (settings.provider) {
             store.set('apiProvider', settings.provider);
         }
@@ -760,3 +792,73 @@ ipcMain.on('remove-screenshot', () => {
         resizeWindowForScreenshot(false);
     }
 });
+
+// Add these new functions for license verification
+async function checkLicenseAndHandle() {
+    try {
+        const licenseStatus = await checkLicense();
+        if (!licenseStatus.valid) {
+            // License has expired, show dialog and quit
+            const { dialog } = require('electron');
+            await dialog.showMessageBox({
+                type: 'error',
+                title: 'License Expired',
+                message: 'Your 72-hour trial has expired.',
+                detail: licenseStatus.message || 'Please contact support for assistance.',
+                buttons: ['Quit']
+            });
+            app.quit();
+            return false;
+        }
+
+        // Optional: Update remaining time in app UI
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('license-status-update', {
+                hoursRemaining: licenseStatus.hoursRemaining
+            });
+        }
+
+        return true;
+    } catch (error) {
+        console.error('License verification error:', error);
+        throw error;
+    }
+}
+
+async function checkLicense() {
+    try {
+        // Get unique device ID (will be the same across runs on the same device)
+        const deviceId = machineIdSync();
+
+        // Call your license server
+        const response = await fetch('https://license-verification-server.onrender.com/api/check-license', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ deviceId }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Server responded with status ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Log remaining time
+        if (data.valid && data.hoursRemaining) {
+            console.log(`License valid. ${data.hoursRemaining} hours remaining.`);
+        } else if (!data.valid) {
+            console.log(`License invalid: ${data.message}`);
+        }
+
+        return {
+            valid: data.valid,
+            hoursRemaining: data.hoursRemaining || 0,
+            message: data.message
+        };
+    } catch (error) {
+        console.error('License check failed:', error);
+        throw error;
+    }
+}
