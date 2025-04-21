@@ -3,97 +3,109 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('Settings page loaded');
 
     // Get DOM elements
-    const geminiRadio = document.getElementById('gemini');
-    const openaiRadio = document.getElementById('openai');
-    const geminiKeyInput = document.getElementById('gemini-key');
-    const openaiKeyInput = document.getElementById('openai-key');
-    const openaiModelSelect = document.getElementById('openai-model');
+    const providerSelect = document.getElementById('provider-select');
+    const geminiKey = document.getElementById('gemini-key');
+    const openaiKey = document.getElementById('openai-key');
+    const openaiModel = document.getElementById('openai-model'); // May be null if commented out
     const saveButton = document.getElementById('save-button');
     const cancelButton = document.getElementById('cancel-button');
+    const enableReasoning = document.getElementById('enable-reasoning'); // May be null if commented out
+    const geminiSettings = document.getElementById('gemini-settings');
+    const openaiSettings = document.getElementById('openai-settings');
+    const geminiProviderBtn = document.getElementById('gemini-provider');
+    const openaiProviderBtn = document.getElementById('openai-provider');
 
-    // Force button setup with direct click handlers
-    function setupButtons() {
-        // Remove any existing listeners to be safe
-        const newSaveButton = saveButton.cloneNode(true);
-        const newCancelButton = cancelButton.cloneNode(true);
-
-        saveButton.parentNode.replaceChild(newSaveButton, saveButton);
-        cancelButton.parentNode.replaceChild(newCancelButton, cancelButton);
-
-        // Re-attach references
-        const saveBtn = document.getElementById('save-button');
-        const cancelBtn = document.getElementById('cancel-button');
-
-        // Direct onclick property assignment (more reliable in packaged apps)
-        saveBtn.onclick = function () {
-            handleSave();
-            return false;
-        };
-
-        cancelBtn.onclick = function () {
-            console.log('Cancel clicked - direct handler');
-            window.electronAPI.closeSettingsWindow();
-            return false;
-        };
-    }
-
-    // Load current settings
+    // Initially load current settings
     try {
-        console.log('Loading settings...');
-        const settings = await window.electronAPI.getSettings();
-        console.log('Current settings:', settings);
+        const settings = await window.settingsAPI.getSettings();
 
-        // Set the selected provider
-        if (settings.provider === 'openai') {
-            openaiRadio.checked = true;
-        } else {
-            geminiRadio.checked = true;
+        // Set values based on retrieved settings
+        providerSelect.value = settings.provider || 'gemini';
+        geminiKey.value = settings.geminiKey || '';
+        openaiKey.value = settings.openaiKey || '';
+
+        // Only set values if elements exist
+        if (openaiModel) {
+            openaiModel.value = settings.openaiModel || 'o4mini-high';
         }
 
-        // Set API keys
-        geminiKeyInput.value = settings.geminiKey || '';
-        openaiKeyInput.value = settings.openaiKey || '';
-        openaiModelSelect.value = settings.openaiModel || "o4mini-high";
+        if (enableReasoning) {
+            enableReasoning.checked = settings.enableReasoning || false;
+        }
+
+        // Update button UI based on saved provider
+        updateProviderButtons(providerSelect.value);
+
+        // Update visibility of provider-specific sections
+        updateSettingsVisibility();
     } catch (error) {
         console.error('Error loading settings:', error);
     }
 
-    // Save handler function
-    async function handleSave() {
-        console.log('Save function called');
+    // Toggle visibility of provider-specific settings
+    function updateSettingsVisibility() {
+        const isGemini = providerSelect.value === 'gemini';
+        geminiSettings.style.display = isGemini ? 'block' : 'none';
+        openaiSettings.style.display = isGemini ? 'none' : 'block';
+    }
 
-        // Get current values
-        const selectedProvider = document.getElementById('gemini').checked ? 'gemini' : 'openai';
-        const geminiKey = document.getElementById('gemini-key').value.trim();
-        const openaiKey = document.getElementById('openai-key').value.trim();
-        const openaiModel = document.getElementById('openai-model').value;
-
-        console.log('Saving provider:', selectedProvider);
-
-        // Validate inputs
-        if ((selectedProvider === 'gemini' && !geminiKey) ||
-            (selectedProvider === 'openai' && !openaiKey)) {
-            alert(`Please enter an API key for ${selectedProvider === 'gemini' ? 'Google Gemini' : 'OpenAI'}.`);
-            return;
-        }
-
-        try {
-            console.log('Sending data to main process...');
-
-            // Use direct method call to save settings
-            window.electronAPI.saveAndClose({
-                provider: selectedProvider,
-                geminiKey: geminiKey,
-                openaiKey: openaiKey,
-                openaiModel: openaiModel
-            });
-
-        } catch (error) {
-            console.error('Error in save handler:', error);
-            alert('An error occurred while saving settings.');
+    // Update provider buttons active state
+    function updateProviderButtons(provider) {
+        if (provider === 'gemini') {
+            geminiProviderBtn.classList.add('active');
+            openaiProviderBtn.classList.remove('active');
+        } else {
+            openaiProviderBtn.classList.add('active');
+            geminiProviderBtn.classList.remove('active');
         }
     }
 
-    // Set up buttons with direct handlers
-    setupButtons();
+    // Event listener for Gemini provider button
+    geminiProviderBtn.addEventListener('click', () => {
+        providerSelect.value = 'gemini';
+        updateProviderButtons('gemini');
+        updateSettingsVisibility();
+    });
+
+    // Event listener for OpenAI provider button
+    openaiProviderBtn.addEventListener('click', () => {
+        providerSelect.value = 'openai';
+        updateProviderButtons('openai');
+        updateSettingsVisibility();
+    });
+
+    // Event listener for save button
+    saveButton.addEventListener('click', async () => {
+        // Get current settings to maintain values for commented out elements
+        let currentSettings = {};
+        try {
+            currentSettings = await window.settingsAPI.getSettings();
+        } catch (error) {
+            console.error('Error getting current settings:', error);
+            currentSettings = {};
+        }
+
+        // Gather settings
+        const settings = {
+            provider: providerSelect.value,
+            geminiKey: geminiKey.value,
+            openaiKey: openaiKey.value,
+            openaiModel: openaiModel ? openaiModel.value : (currentSettings.openaiModel || 'o4mini-high'),
+            enableReasoning: enableReasoning ? enableReasoning.checked : (currentSettings.enableReasoning || false)
+        };
+
+        try {
+            // Save settings via IPC
+            await window.settingsAPI.saveSettings(settings);
+            // Closing is handled by main process
+        } catch (error) {
+            console.error('Error saving settings:', error);
+            alert('Failed to save settings: ' + error.message);
+        }
+    });
+
+    // Event listener for cancel button
+    cancelButton.addEventListener('click', () => {
+        window.settingsAPI.closeWindow();
+    });
 }); 

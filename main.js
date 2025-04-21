@@ -8,6 +8,9 @@ const os = require('os');
 // const Store = require('electron-store'); // <<< REMOVE THIS LINE
 // const fetch = require('node-fetch'); // Uncomment if using node-fetch instead of built-in fetch
 
+// Set app name
+app.name = 'Spectro';
+
 // Global references to prevent garbage collection
 let mainWindow;
 let apiKeyWindow;
@@ -641,6 +644,20 @@ ipcMain.on('toggle-reasoning', (event, newState) => {
     store.set('enableReasoning', !!newState);
 });
 
+// --- IPC Listener: Save Model Selection ---
+ipcMain.on('save-model-selection', (event, modelId) => {
+    if (!store) {
+        console.error('Store not initialized, cannot save model selection');
+        return;
+    }
+    if (modelId && (modelId === 'o4mini-high' || modelId === '4.1')) {
+        console.log('Saving model selection:', modelId);
+        store.set('openaiModel', modelId);
+    } else {
+        console.error('Invalid model ID:', modelId);
+    }
+});
+
 // --- IPC Handler: Call AI API ---
 ipcMain.handle('call-gemini', async (event, payload) => {
     console.log('Main process received request to call AI API');
@@ -661,6 +678,7 @@ ipcMain.handle('call-gemini', async (event, payload) => {
         let hasScreenshot = false;
         let screenshotData = null;
         let customInstructions = '';
+        let requestedModel = null;
 
         // Check if payload is a JSON string (from screenshot handling)
         if (typeof payload === 'string' && payload.startsWith('{') && payload.endsWith('}')) {
@@ -669,8 +687,14 @@ ipcMain.handle('call-gemini', async (event, payload) => {
                 textInput = parsedPayload.text || '';
                 screenshotData = parsedPayload.screenshot || null;
                 customInstructions = parsedPayload.instructions || '';
+                requestedModel = parsedPayload.model || null;
                 hasScreenshot = !!screenshotData;
-                console.log('Parsed screenshot payload. Has screenshot:', hasScreenshot);
+                console.log('Parsed payload. Has screenshot:', hasScreenshot);
+                if (requestedModel) {
+                    console.log('Requested model:', requestedModel);
+                }
+                console.log('Screenshot data type:', typeof screenshotData);
+                console.log('Screenshot data starts with:', screenshotData ? screenshotData.substring(0, 50) + '...' : 'null');
             } catch (parseError) {
                 console.error('Error parsing JSON payload:', parseError);
                 // Fall back to treating payload as plain text
@@ -681,7 +705,7 @@ ipcMain.handle('call-gemini', async (event, payload) => {
         if (provider === 'gemini') {
             return await callGeminiApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot);
         } else {
-            return await callOpenAIApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot);
+            return await callOpenAIApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot, requestedModel);
         }
     } catch (error) {
         console.error(`Error calling ${provider} API:`, error);
@@ -765,17 +789,18 @@ async function callGeminiApi(apiKey, textInput, customInstructions, screenshotDa
 }
 
 // Function to call the OpenAI API
-async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot) {
+async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot, requestedModel) {
     // Determine the correct model config based on settings and screenshot status
+    // Use the requested model if provided, otherwise fall back to stored model
     const storedModel = store.get('openaiModel') || 'o4mini-high';
-    const selectedModel = hasScreenshot ? '4.1' : storedModel;
+    const selectedModel = requestedModel || storedModel;
     const modelConfig = MODEL_CONFIG[selectedModel];
     const apiUrl = modelConfig.baseUrl;
 
     console.log(`Using OpenAI model: ${modelConfig.modelName}`);
 
-    // Check if reasoning is enabled
-    const enableReasoning = store.get('enableReasoning') || false;
+    // Check if reasoning is enabled - only applicable for o4mini-high model
+    const enableReasoning = (selectedModel === 'o4mini-high') && (store.get('enableReasoning') || false);
     console.log(`Reasoning enabled: ${enableReasoning}`);
 
     // Create request headers
@@ -809,19 +834,20 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
 
     // Add screenshot if available
     if (hasScreenshot && screenshotData) {
+        // Format image according to OpenAI API requirements
+        // The screenshotData should already be a data URL like: data:image/png;base64,ABC123...
         userMessageContent.push({
             type: "input_image",
-            image: {
-                data: screenshotData.split(',')[1], // Remove the data:image/png;base64, prefix
-                media_type: "image/png"
-            }
+            image_url: screenshotData  // Pass the data URL directly as a string, not as an object
         });
+
+        console.log('Image URL format being sent: String (data URL)');
+        console.log('Image URL starts with:', screenshotData.substring(0, 30) + '...');
     }
 
     // Create the input message array
     const inputMessages = [
         {
-            type: "message",
             role: "user",
             content: userMessageContent
         }
@@ -843,7 +869,7 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
         };
     }
 
-    console.log('Final API request payload:', JSON.stringify(requestBody, null, 2));
+    console.log('Sending API request to OpenAI:', modelConfig.modelName);
 
     // Call the OpenAI API
     const response = await fetch(apiUrl, {
@@ -998,7 +1024,7 @@ async function checkLicense() {
                 'Content-Type': 'application/json',
                 'X-App-Version': app.getVersion(),
                 'X-Request-Timestamp': timestamp.toString(),
-                'User-Agent': `AI-Overlay/${app.getVersion()} (${os.platform()}; ${os.release()})`
+                'User-Agent': `Spectro/${app.getVersion()} (${os.platform()}; ${os.release()})`
             },
             body: JSON.stringify({
                 deviceId,
@@ -1278,3 +1304,4 @@ async function verifyAppIntegrity() {
         return false;
     }
 }
+

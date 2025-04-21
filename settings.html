@@ -3,235 +3,204 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self';">
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';">
+    <title>Spectro Settings</title>
     <style>
-        :root {
-            --bg-color: #2d2d2d;
-            --text-color: #e0e0e0;
-            --label-color: #b0b0b0;
-            --border-color: #555;
-            --input-bg: #3a3a3a;
-            --button-bg: #007aff;
-            --button-hover-bg: #0056b3;
-            --cancel-bg: #666;
-            --cancel-hover-bg: #444;
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            background-color: #f5f5f5;
         }
 
-        html,
-        body {
-            margin: 0 !important;
-            padding: 0 !important;
-            background-color: #2d2d2d !important;
-            color: #e0e0e0 !important;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
-        }
-
-        body {
-            padding: 20px !important;
-            font-size: 14px !important;
+        .container {
+            max-width: 450px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
         h1 {
-            font-size: 20px !important;
-            margin-top: 0 !important;
-            margin-bottom: 20px !important;
-            color: #e0e0e0 !important;
+            margin-top: 0;
+            color: #2a7ae2;
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
         }
 
-        .form-group {
-            margin-bottom: 20px !important;
+        .setting-group {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .setting-group:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        h2 {
+            font-size: 18px;
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #444;
         }
 
         label {
-            display: block !important;
-            margin-bottom: 5px !important;
-            font-size: 14px !important;
-            color: #b0b0b0 !important;
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
         }
 
         input[type="text"],
         input[type="password"],
         select {
-            width: 100% !important;
-            padding: 8px !important;
-            border-radius: 4px !important;
-            border: 1px solid #555 !important;
-            background-color: #3a3a3a !important;
-            color: #e0e0e0 !important;
-            font-size: 14px !important;
-            box-sizing: border-box !important;
-            -webkit-appearance: none !important;
-        }
-
-        input[type="text"]:focus,
-        input[type="password"]:focus,
-        select:focus {
-            outline: none !important;
-            border-color: #007aff !important;
-            box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.3) !important;
-        }
-
-        .radio-group {
-            margin-bottom: 15px !important;
-        }
-
-        .radio-option {
-            margin-bottom: 8px !important;
-            color: #e0e0e0 !important;
-        }
-
-        .radio-option input[type="radio"] {
-            margin-right: 8px !important;
-        }
-
-        .buttons {
-            display: flex !important;
-            justify-content: flex-end !important;
-            gap: 10px !important;
-            margin-top: 30px !important;
-        }
-
-        button {
-            padding: 8px 16px !important;
-            border: none !important;
-            border-radius: 4px !important;
-            cursor: pointer !important;
-            font-size: 14px !important;
-            font-weight: 500 !important;
-        }
-
-        button.save {
-            background-color: #007aff !important;
-            color: white !important;
-        }
-
-        button.save:hover {
-            background-color: #0056b3 !important;
-        }
-
-        button.cancel {
-            background-color: #666 !important;
-            color: white !important;
-        }
-
-        button.cancel:hover {
-            background-color: #444 !important;
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
         }
 
         select {
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="6"><path d="M0 0l6 6 6-6z" fill="%23888"/></svg>') !important;
-            background-repeat: no-repeat !important;
-            background-position: right 10px center !important;
-            padding-right: 30px !important;
+            background-color: white;
         }
 
-        /* Override default radio button styling */
-        input[type="radio"] {
-            -webkit-appearance: none !important;
-            -moz-appearance: none !important;
-            appearance: none !important;
-            width: 16px !important;
-            height: 16px !important;
-            border: 2px solid #555 !important;
-            border-radius: 50% !important;
-            outline: none !important;
-            background-color: #3a3a3a !important;
-            position: relative !important;
-            vertical-align: middle !important;
+        .button-container {
+            text-align: right;
+            margin-top: 20px;
+            display: flex;
+            justify-content: flex-end;
         }
 
-        input[type="radio"]:checked {
-            border-color: #007aff !important;
+        button {
+            padding: 10px 15px;
+            margin-left: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: none;
+            font-size: 14px;
         }
 
-        input[type="radio"]:checked:after {
-            content: "" !important;
-            position: absolute !important;
-            top: 3px !important;
-            left: 3px !important;
-            width: 6px !important;
-            height: 6px !important;
-            border-radius: 50% !important;
-            background-color: #007aff !important;
+        .save-button {
+            background-color: #2a7ae2;
+            color: white;
         }
 
-        /* Checkbox styling */
-        .checkbox-option {
-            display: flex !important;
-            align-items: center !important;
-            margin-bottom: 8px !important;
+        .save-button:hover {
+            background-color: #1c5aa6;
         }
 
-        input[type="checkbox"] {
-            -webkit-appearance: none !important;
-            -moz-appearance: none !important;
-            appearance: none !important;
-            width: 18px !important;
-            height: 18px !important;
-            border: 2px solid #555 !important;
-            border-radius: 4px !important;
-            outline: none !important;
-            background-color: #3a3a3a !important;
-            position: relative !important;
-            vertical-align: middle !important;
-            margin-right: 8px !important;
+        .cancel-button {
+            background-color: #f5f5f5;
+            color: #333;
+            border: 1px solid #ddd;
         }
 
-        input[type="checkbox"]:checked {
-            border-color: #007aff !important;
-            background-color: #007aff !important;
+        .cancel-button:hover {
+            background-color: #e5e5e5;
         }
 
-        input[type="checkbox"]:checked:after {
-            content: "✓" !important;
-            position: absolute !important;
-            color: white !important;
-            font-size: 14px !important;
-            top: -2px !important;
-            left: 2px !important;
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .checkbox-container input[type="checkbox"] {
+            margin-right: 10px;
+        }
+
+        .info-text {
+            font-size: 13px;
+            color: #666;
+            margin-top: -5px;
+            margin-bottom: 15px;
+        }
+
+        /* New styles for provider selection buttons */
+        .provider-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .provider-button {
+            flex: 1;
+            padding: 12px;
+            background-color: #f5f5f5;
+            color: #333;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .provider-button.active {
+            background-color: #2a7ae2;
+            color: white;
+            border-color: #2a7ae2;
+        }
+
+        .provider-button:hover:not(.active) {
+            background-color: #e5e5e5;
         }
     </style>
-    <title>Settings</title>
 </head>
 
 <body>
-    <h1>API Settings</h1>
+    <div class="container">
+        <h1>Spectro Settings</h1>
 
-    <div class="form-group">
-        <label>Select AI Provider:</label>
-        <div class="radio-group">
-            <div class="radio-option">
-                <input type="radio" id="gemini" name="provider" value="gemini">
-                <label for="gemini">Google Gemini</label>
+        <div class="setting-group">
+            <h2>API Provider</h2>
+            <div class="provider-buttons">
+                <button id="gemini-provider" class="provider-button active">Google Gemini</button>
+                <button id="openai-provider" class="provider-button">OpenAI</button>
             </div>
-            <div class="radio-option">
-                <input type="radio" id="openai" name="provider" value="openai">
-                <label for="openai">OpenAI</label>
+            <input type="hidden" id="provider-select" value="gemini">
+        </div>
+
+        <div class="setting-group">
+            <h2>API Keys</h2>
+            <div id="gemini-settings">
+                <label for="gemini-key">Gemini API Key:</label>
+                <input type="password" id="gemini-key" placeholder="Enter your Gemini API key">
+                <div class="info-text">Get your API key from Google AI Studio</div>
+            </div>
+
+            <div id="openai-settings">
+                <label for="openai-key">OpenAI API Key:</label>
+                <input type="password" id="openai-key" placeholder="Enter your OpenAI API key">
+                <div class="info-text">Get your API key from OpenAI Platform</div>
+
+                <!-- <label for="openai-model">OpenAI Model:</label>
+                <select id="openai-model">
+                    <option value="o4mini-high">GPT-4 Mini</option>
+                    <option value="o4-2">GPT-4.1</option>
+                </select> -->
             </div>
         </div>
-    </div>
 
-    <div class="form-group">
-        <label for="gemini-key">Google Gemini API Key:</label>
-        <input type="password" id="gemini-key" placeholder="Enter your Gemini API key">
-    </div>
+        <div class="setting-group">
+            <!-- <h2>Options</h2>
+            <div class="checkbox-container">
+                <input type="checkbox" id="enable-reasoning">
+                <label for="enable-reasoning">Enable Reasoning (GPT-4 Mini only)</label>
+            </div> -->
+        </div>
 
-    <div class="form-group">
-        <label for="openai-key">OpenAI API Key:</label>
-        <input type="password" id="openai-key" placeholder="Enter your OpenAI API key">
-    </div>
-
-    <div class="form-group" id="openai-model-group">
-        <label for="openai-model">OpenAI Model:</label>
-        <select id="openai-model">
-            <option value="o4mini-high">o4 Mini </option>
-            <option value="4.1">GPT-4.1 (Screenshot)</option>
-        </select>
-    </div>
-
-    <div class="buttons">
-        <button class="cancel" id="cancel-button">Cancel</button>
-        <button class="save" id="save-button">Save</button>
+        <div class="button-container">
+            <button id="cancel-button" class="cancel-button">Cancel</button>
+            <button id="save-button" class="save-button">Save Settings</button>
+        </div>
     </div>
 
     <script src="./settings.js"></script>

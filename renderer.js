@@ -20,8 +20,13 @@ const settingsButton = document.getElementById('settings-button');
 const reasoningCheckbox = document.getElementById('enable-reasoning-main');
 const reasoningLabel = document.getElementById('reasoning-label');
 
+// Add model selector buttons references
+const modelButtons = document.querySelectorAll('.model-btn');
+
 // Variable to store the current screenshot data URL
 let currentScreenshot = null;
+// Variable to store the current selected model
+let currentModel = 'o4mini-high'; // Default to GPT-4 Mini
 
 // --- REMOVED: IPC Listener for clipboard text ---
 // window.electronAPI.onSetInputText((text) => { ... });
@@ -59,6 +64,41 @@ window.electronAPI.onLicenseUpdate((data) => {
     console.log(`License time remaining: ${data.hoursRemaining} hours`);
     // Update your UI as needed
 });
+
+// Get current model from settings
+async function getCurrentModelFromSettings() {
+    try {
+        const settings = await window.electronAPI.getSettings();
+        if (settings && settings.openaiModel) {
+            currentModel = settings.openaiModel;
+            updateModelUI(currentModel);
+        }
+    } catch (error) {
+        console.error('Error getting current model:', error);
+    }
+}
+
+// Update the model UI to reflect the current selected model
+function updateModelUI(modelId) {
+    modelButtons.forEach(button => {
+        if (button.dataset.model === modelId) {
+            button.classList.add('active');
+        } else {
+            button.classList.remove('active');
+        }
+    });
+
+    // If the new model is GPT-4.1, disable reasoning checkbox (it only works with GPT-4 Mini)
+    if (modelId === '4.1' && reasoningCheckbox) {
+        reasoningCheckbox.checked = false;
+        reasoningCheckbox.disabled = true;
+        reasoningLabel.classList.add('disabled');
+        window.electronAPI.toggleReasoning(false);
+    } else if (reasoningCheckbox) {
+        reasoningCheckbox.disabled = false;
+        reasoningLabel.classList.remove('disabled');
+    }
+}
 
 // Function to display the screenshot
 function displayScreenshot(dataUrl) {
@@ -130,13 +170,29 @@ if (settingsButton) {
     });
 }
 
+// --- Event Listener: Model Buttons ---
+modelButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        const modelId = button.dataset.model;
+        console.log(`Model button clicked: ${modelId}`);
+
+        // Update UI first
+        updateModelUI(modelId);
+
+        // Update the currentModel variable
+        currentModel = modelId;
+
+        // Save model selection to settings
+        window.electronAPI.saveModelSelection(modelId);
+    });
+});
+
 // --- Event Listener: Reasoning Checkbox ---
 if (reasoningCheckbox && reasoningLabel) {
     reasoningCheckbox.addEventListener('change', (event) => {
         const isEnabled = event.target.checked;
         console.log(`Reasoning checkbox changed to: ${isEnabled}`);
-        // Update label text
-        reasoningLabel.textContent = isEnabled ? 'Reasoning On' : 'Reasoning Off';
+        // We don't update the label text anymore with On/Off
         window.electronAPI.toggleReasoning(isEnabled);
     });
 }
@@ -166,11 +222,19 @@ submitButton.addEventListener('click', async () => {
             const screenshotPayload = {
                 text: inputText,
                 screenshot: currentScreenshot,
-                instructions: customInstructions
+                instructions: customInstructions,
+                model: currentModel // Pass the selected model
             };
 
             // Convert to JSON string
             payload = JSON.stringify(screenshotPayload);
+        } else {
+            // If it's just text, still pass the model selection
+            const textPayload = {
+                text: inputText,
+                model: currentModel
+            };
+            payload = JSON.stringify(textPayload);
         }
 
         console.log('Renderer sending data to main process (AI)');
@@ -212,14 +276,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Focus might be set initially by main process or via hotkey.
     submitButton.disabled = true; // Disable initially until input or screenshot
 
-    // Get initial reasoning state and set checkbox and label
+    // Get current model from settings
+    await getCurrentModelFromSettings();
+
+    // Get initial reasoning state and set checkbox
     if (reasoningCheckbox && reasoningLabel) {
         try {
             const initialState = await window.electronAPI.getReasoningState();
             console.log('Initial reasoning state received:', initialState);
             reasoningCheckbox.checked = initialState;
-            // Set initial label text
-            reasoningLabel.textContent = initialState ? 'Reasoning On' : 'Reasoning Off';
+            // We don't update the label text now with On/Off
+
+            // If the current model is 4.1, disable reasoning (it only works with GPT-4 Mini)
+            if (currentModel === '4.1') {
+                reasoningCheckbox.disabled = true;
+                reasoningLabel.classList.add('disabled');
+            }
         } catch (error) {
             console.error('Error getting initial reasoning state:', error);
         }

@@ -6,7 +6,7 @@
     <meta http-equiv="Content-Security-Policy"
         content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
     <link rel="stylesheet" href="style.css">
-    <title>AI Assistant Overlay</title>
+    <title>Spectro</title>
 </head>
 
 <body>
@@ -36,11 +36,22 @@
             <button id="submit-button">Submit to AI</button>
             <button id="dismiss-button">Dismiss</button>
 
-            <!-- Add Reasoning Checkbox here -->
-            <div class="reasoning-toggle">
-                <input type="checkbox" id="enable-reasoning-main" name="enable-reasoning-main">
-                <label for="enable-reasoning-main" id="reasoning-label"
-                    title="Enable Reasoning (o4-Mini only)">Reasoning Off</label>
+            <div class="controls-right">
+                <!-- Model selector buttons -->
+                <div class="model-selector">
+                    <span class="model-label">Model:</span>
+                    <div class="model-buttons">
+                        <button class="model-btn active" data-model="o4mini-high">GPT-4 Mini</button>
+                        <button class="model-btn" data-model="4.1">GPT-4.1</button>
+                    </div>
+                </div>
+
+                <!-- Reasoning toggle checkbox -->
+                <div class="reasoning-toggle">
+                    <input type="checkbox" id="enable-reasoning-main" name="enable-reasoning-main">
+                    <label for="enable-reasoning-main" id="reasoning-label"
+                        title="Enable Reasoning (GPT-4 Mini only)">Reasoning</label>
+                </div>
             </div>
 
             <button id="settings-button" class="settings-button" title="Settings">⚙</button>

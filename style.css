@@ -100,9 +100,18 @@ textarea:read-only {
     padding-right: 15px;
     z-index: 10;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 10px;
     /* Spacing between buttons/indicator */
+}
+
+.controls-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+    margin-right: 10px;
 }
 
 button {
@@ -219,9 +228,10 @@ button {
     min-height: 40px;
 }
 
+/* Shortcut hints */
 #shortcut-hints {
-    margin-left: auto;
-    /* Pushes hints to the right */
+    display: none;
+    /* Hide by default on smaller screens */
     font-size: 0.8em;
     color: var(--label-color);
     text-align: right;
@@ -276,4 +286,81 @@ button {
 .reasoning-toggle label:hover {
     color: var(--text-color);
     border-color: var(--text-color);
+}
+
+.reasoning-toggle label.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    color: var(--label-color);
+    background-color: var(--input-bg);
+    border-color: var(--border-color);
+}
+
+/* Model Selector Styles */
+.model-selector {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.model-label {
+    font-size: 0.85em;
+    color: var(--label-color);
+    white-space: nowrap;
+}
+
+.model-buttons {
+    display: flex;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+.model-btn {
+    padding: 4px 8px;
+    font-size: 0.8em;
+    background-color: var(--input-bg);
+    color: var(--label-color);
+    border: none;
+    border-right: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.model-btn:last-child {
+    border-right: none;
+}
+
+.model-btn:hover {
+    background-color: rgba(70, 70, 70, 0.8);
+    color: var(--text-color);
+}
+
+.model-btn.active {
+    background-color: var(--button-bg);
+    color: white;
+}
+
+/* Responsive design for controls */
+@media (max-width: 580px) {
+    #controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .controls-right {
+        margin: 5px 0;
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    #settings-button {
+        align-self: flex-end;
+    }
+}
+
+@media (min-width: 768px) {
+    #shortcut-hints {
+        display: block;
+    }
 }

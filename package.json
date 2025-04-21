@@ -1,7 +1,7 @@
 {
-  "name": "ai-overlay-app",
+  "name": "spectro",
   "version": "1.0.0",
-  "description": "AI Assistant Overlay (Gemini)",
+  "description": "Spectro AI Assistant Overlay",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -23,8 +23,8 @@
     "node-machine-id": "^1.1.12"
   },
   "build": {
-    "appId": "com.yourapp.aioverlaygemini",
-    "productName": "AI Overlay Assistant",
+    "appId": "com.yourapp.spectro",
+    "productName": "Spectro",
     "files": [
       "main.js",
       "preload.js",

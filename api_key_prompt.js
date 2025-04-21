@@ -1,54 +1,84 @@
 // api_key_prompt.js
-const apiKeyInput = document.getElementById('apiKey');
-const saveButton = document.getElementById('saveButton');
-const errorMessage = document.getElementById('errorMessage');
-const geminiRadio = document.getElementById('gemini');
-const openaiRadio = document.getElementById('openai');
+document.addEventListener('DOMContentLoaded', () => {
+    // Get elements
+    const saveButton = document.getElementById('save-button');
+    const apiKeyInput = document.getElementById('api-key');
+    const errorMessage = document.getElementById('error-message');
+    const geminiRadio = document.getElementById('gemini');
+    const openaiRadio = document.getElementById('openai');
+    const providerHelp = document.getElementById('provider-help');
+    const geminiLink = document.getElementById('gemini-link');
 
-saveButton.addEventListener('click', async () => {
-    const key = apiKeyInput.value.trim();
-    const provider = geminiRadio.checked ? 'gemini' : 'openai';
-    errorMessage.style.display = 'none'; // Hide previous error
+    // Add link handling
+    geminiLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.electronAPI.openExternalLink('https://aistudio.google.com/');
+    });
 
-    if (!key) {
-        errorMessage.textContent = 'API Key cannot be empty.';
-        errorMessage.style.display = 'block';
-        return;
-    }
+    // Initialize provider selection
+    let selectedProvider = 'gemini';
 
-    try {
-        // Send key and provider to main process
-        const result = await window.apiKeyPromptAPI.saveKey({
-            apiKey: key,
-            provider: provider
-        });
+    // Update provider help text when selection changes
+    geminiRadio.addEventListener('change', updateHelpText);
+    openaiRadio.addEventListener('change', updateHelpText);
 
-        if (result.success) {
-            // Main process will close this window on success
-            console.log(`${provider.toUpperCase()} API Key sent to main process successfully.`);
+    function updateHelpText() {
+        selectedProvider = geminiRadio.checked ? 'gemini' : 'openai';
+
+        if (selectedProvider === 'gemini') {
+            providerHelp.innerHTML = 'Google Gemini API keys can be obtained from <a href="#" id="gemini-link">Google AI Studio</a>.';
+            const newGeminiLink = document.getElementById('gemini-link');
+            newGeminiLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.electronAPI.openExternalLink('https://aistudio.google.com/');
+            });
         } else {
-            errorMessage.textContent = `Error: ${result.error || 'Could not save key.'}`;
-            errorMessage.style.display = 'block';
+            providerHelp.innerHTML = 'OpenAI API keys can be obtained from your <a href="#" id="openai-link">OpenAI account</a>.';
+            const openaiLink = document.getElementById('openai-link');
+            openaiLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.electronAPI.openExternalLink('https://platform.openai.com/account/api-keys');
+            });
         }
-    } catch (error) {
-        errorMessage.textContent = `IPC Error: ${error.message}`;
+    }
+
+    // Handle save button click
+    saveButton.addEventListener('click', async () => {
+        const apiKey = apiKeyInput.value.trim();
+
+        if (!apiKey) {
+            showError('Please enter a valid API key');
+            return;
+        }
+
+        selectedProvider = geminiRadio.checked ? 'gemini' : 'openai';
+
+        try {
+            // Save API key through the preload bridge
+            const result = await window.electronAPI.saveApiKey({
+                apiKey,
+                provider: selectedProvider
+            });
+
+            if (!result.success) {
+                showError(result.error || 'Failed to save API key');
+            }
+            // Success is handled by the main process (window closes)
+        } catch (error) {
+            showError(`Error: ${error.message}`);
+        }
+    });
+
+    // Show error message
+    function showError(message) {
+        errorMessage.textContent = message;
         errorMessage.style.display = 'block';
-        console.error("IPC Error saving key:", error);
     }
+
+    // Add keyboard event listener for Enter key
+    apiKeyInput.addEventListener('keypress', (event) => {
+        if (event.key === 'Enter') {
+            saveButton.click();
+        }
+    });
 });
-
-// Update the form placeholder based on selected provider
-function updateProviderHint() {
-    if (geminiRadio.checked) {
-        apiKeyInput.placeholder = "Enter your Google Gemini API key";
-    } else {
-        apiKeyInput.placeholder = "Enter your OpenAI API key";
-    }
-}
-
-// Initial placeholder update
-updateProviderHint();
-
-// Update placeholder when provider changes
-geminiRadio.addEventListener('change', updateProviderHint);
-openaiRadio.addEventListener('change', updateProviderHint);

@@ -60,7 +60,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // New channels for reasoning toggle
   getReasoningState: () => ipcRenderer.invoke('get-reasoning-state'),
-  toggleReasoning: (newState) => ipcRenderer.send('toggle-reasoning', newState)
+  toggleReasoning: (newState) => ipcRenderer.send('toggle-reasoning', newState),
+
+  // New channels for model selection
+  getSettings: () => ipcRenderer.invoke('get-settings'),
+  saveModelSelection: (modelId) => ipcRenderer.send('save-model-selection', modelId)
 });
 
 console.log('Preload script executed');

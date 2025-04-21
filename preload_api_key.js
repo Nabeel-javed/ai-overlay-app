@@ -1,8 +1,12 @@
 // preload_api_key.js
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, shell } = require('electron');
 
-contextBridge.exposeInMainWorld('apiKeyPromptAPI', {
-    // Renderer -> Main (Request/Response)
-    // Now accepts both API key and provider type
-    saveKey: (apiData) => ipcRenderer.invoke('save-api-key', apiData)
+contextBridge.exposeInMainWorld('electronAPI', {
+    // Updated to match the new function name
+    saveApiKey: (apiData) => ipcRenderer.invoke('save-api-key', apiData),
+
+    // Add function to open external links
+    openExternalLink: (url) => {
+        shell.openExternal(url);
+    }
 });
