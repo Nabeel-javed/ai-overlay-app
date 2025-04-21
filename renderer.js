@@ -16,6 +16,10 @@ const instructionsTextArea = document.getElementById('instructions-textarea');
 // Add settings button reference if it exists in the HTML
 const settingsButton = document.getElementById('settings-button');
 
+// Add reasoning checkbox and label references
+const reasoningCheckbox = document.getElementById('enable-reasoning-main');
+const reasoningLabel = document.getElementById('reasoning-label');
+
 // Variable to store the current screenshot data URL
 let currentScreenshot = null;
 
@@ -126,6 +130,17 @@ if (settingsButton) {
     });
 }
 
+// --- Event Listener: Reasoning Checkbox ---
+if (reasoningCheckbox && reasoningLabel) {
+    reasoningCheckbox.addEventListener('change', (event) => {
+        const isEnabled = event.target.checked;
+        console.log(`Reasoning checkbox changed to: ${isEnabled}`);
+        // Update label text
+        reasoningLabel.textContent = isEnabled ? 'Reasoning On' : 'Reasoning Off';
+        window.electronAPI.toggleReasoning(isEnabled);
+    });
+}
+
 // --- Event Listener: Submit Button ---
 submitButton.addEventListener('click', async () => {
     const inputText = inputTextArea.value.trim();
@@ -191,6 +206,22 @@ function updateSubmitButton() {
 }
 
 // --- Initial State ---
-// Input area is now always enabled by default when window is visible.
-// Focus might be set initially by main process or via hotkey.
-submitButton.disabled = true; // Disable initially until input or screenshot
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('DOM fully loaded and parsed');
+    // Input area is now always enabled by default when window is visible.
+    // Focus might be set initially by main process or via hotkey.
+    submitButton.disabled = true; // Disable initially until input or screenshot
+
+    // Get initial reasoning state and set checkbox and label
+    if (reasoningCheckbox && reasoningLabel) {
+        try {
+            const initialState = await window.electronAPI.getReasoningState();
+            console.log('Initial reasoning state received:', initialState);
+            reasoningCheckbox.checked = initialState;
+            // Set initial label text
+            reasoningLabel.textContent = initialState ? 'Reasoning On' : 'Reasoning Off';
+        } catch (error) {
+            console.error('Error getting initial reasoning state:', error);
+        }
+    }
+});

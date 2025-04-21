@@ -56,8 +56,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('license-status-update', (event, data) => {
       callback(data);
     })
-  }
+  },
 
-  // Note: 'onSetInputText' was removed as the clipboard content is no longer
-  // automatically pushed to the renderer via this preload script.
+  // New channels for reasoning toggle
+  getReasoningState: () => ipcRenderer.invoke('get-reasoning-state'),
+  toggleReasoning: (newState) => ipcRenderer.send('toggle-reasoning', newState)
 });
+
+console.log('Preload script executed');

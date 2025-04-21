@@ -10,6 +10,8 @@
     --button-hover-bg: #0056b3;
     --dismiss-bg: #666;
     --dismiss-hover-bg: #444;
+    --accent-color: #4CAF50;
+    /* Accent color for checked state */
 }
 
 body {
@@ -218,10 +220,10 @@ button {
 }
 
 #shortcut-hints {
-    font-size: 11px;
-    color: var(--label-color);
     margin-left: auto;
-    opacity: 0.7;
+    /* Pushes hints to the right */
+    font-size: 0.8em;
+    color: var(--label-color);
     text-align: right;
 }
 
@@ -238,4 +240,40 @@ button {
 
 #settings-button:hover {
     background-color: var(--dismiss-hover-bg);
+}
+
+/* Styles for Reasoning Checkbox */
+.reasoning-toggle {
+    display: flex;
+    align-items: center;
+}
+
+.reasoning-toggle input[type="checkbox"] {
+    display: none;
+    /* Hide the actual checkbox */
+}
+
+.reasoning-toggle label {
+    font-size: 0.85em;
+    cursor: pointer;
+    padding: 4px 8px;
+    color: var(--label-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--input-bg);
+    line-height: 1.2;
+    user-select: none;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    white-space: nowrap;
+}
+
+.reasoning-toggle input[type="checkbox"]:checked+label {
+    color: white;
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+.reasoning-toggle label:hover {
+    color: var(--text-color);
+    border-color: var(--text-color);
 }

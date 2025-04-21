@@ -8,7 +8,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const geminiKeyInput = document.getElementById('gemini-key');
     const openaiKeyInput = document.getElementById('openai-key');
     const openaiModelSelect = document.getElementById('openai-model');
-    const enableReasoningCheckbox = document.getElementById('enable-reasoning');
     const saveButton = document.getElementById('save-button');
     const cancelButton = document.getElementById('cancel-button');
 
@@ -55,9 +54,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         geminiKeyInput.value = settings.geminiKey || '';
         openaiKeyInput.value = settings.openaiKey || '';
         openaiModelSelect.value = settings.openaiModel || "o4mini-high";
-
-        // Set reasoning checkbox
-        enableReasoningCheckbox.checked = settings.enableReasoning || false;
     } catch (error) {
         console.error('Error loading settings:', error);
     }
@@ -71,10 +67,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const geminiKey = document.getElementById('gemini-key').value.trim();
         const openaiKey = document.getElementById('openai-key').value.trim();
         const openaiModel = document.getElementById('openai-model').value;
-        const enableReasoning = document.getElementById('enable-reasoning').checked;
 
         console.log('Saving provider:', selectedProvider);
-        console.log('Enable reasoning:', enableReasoning);
 
         // Validate inputs
         if ((selectedProvider === 'gemini' && !geminiKey) ||
@@ -91,8 +85,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 provider: selectedProvider,
                 geminiKey: geminiKey,
                 openaiKey: openaiKey,
-                openaiModel: openaiModel,
-                enableReasoning: enableReasoning
+                openaiModel: openaiModel
             });
 
         } catch (error) {

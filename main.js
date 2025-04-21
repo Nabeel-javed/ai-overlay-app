@@ -609,6 +609,27 @@ ipcMain.on('save-and-close', (event, settings) => {
     }
 });
 
+// --- IPC Handler: Get Reasoning State ---
+ipcMain.handle('get-reasoning-state', async (event) => {
+    if (!store) {
+        console.error('Store not initialized when getting reasoning state');
+        return false; // Default to false if store not ready
+    }
+    const state = store.get('enableReasoning') || false;
+    console.log('Reporting reasoning state:', state);
+    return state;
+});
+
+// --- IPC Listener: Toggle Reasoning State ---
+ipcMain.on('toggle-reasoning', (event, newState) => {
+    if (!store) {
+        console.error('Store not initialized, cannot toggle reasoning');
+        return;
+    }
+    console.log('Toggling reasoning state to:', newState);
+    store.set('enableReasoning', !!newState);
+});
+
 // --- IPC Handler: Call AI API ---
 ipcMain.handle('call-gemini', async (event, payload) => {
     console.log('Main process received request to call AI API');
