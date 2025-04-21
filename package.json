@@ -36,6 +36,7 @@
       "api_key_prompt.js",
       "settings.html",
       "preload_settings.js",
+      "settings.js",
       "node_modules/**/*"
     ],
     "mac": {

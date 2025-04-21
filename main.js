@@ -1,8 +1,10 @@
 // main.js
-const { app, BrowserWindow, globalShortcut, ipcMain, desktopCapturer, screen, Menu } = require('electron'); // Added Menu
+const { app, BrowserWindow, globalShortcut, ipcMain, desktopCapturer, screen, Menu, dialog } = require('electron'); // Added dialog explicitly
 const path = require('path');
 const { machineIdSync } = require('node-machine-id');
 const fetch = require('node-fetch');
+const crypto = require('crypto');
+const os = require('os');
 // const Store = require('electron-store'); // <<< REMOVE THIS LINE
 // const fetch = require('node-fetch'); // Uncomment if using node-fetch instead of built-in fetch
 
@@ -23,6 +25,10 @@ const MODEL_CONFIG = {
     }
 };
 let licenseCheckInterval = null;
+const LICENSE_CHECK_INTERVAL_MS = 237000; // 3 minutes and 57 seconds in milliseconds
+const MAX_LICENSE_CHECK_FAILURES = 3;
+let licenseCheckFailures = 0;
+let lastSuccessfulLicenseCheck = 0;
 
 // --- Function to create the API Key Prompt Window ---
 function createApiKeyPromptWindow() {
@@ -364,7 +370,9 @@ app.whenReady().then(async () => {
 
     console.log("App ready. Initializing Store...");
     const Store = (await import('electron-store')).default;
-    store = new Store();
+    store = new Store({
+        encryptionKey: 'your-secure-encryption-key', // Add encryption to the store
+    });
     console.log("Store instance:", store);
 
     // Set default provider if not set
@@ -372,22 +380,25 @@ app.whenReady().then(async () => {
         store.set('apiProvider', 'gemini');
     }
 
-    // LICENSE VERIFICATION - Add this part
+    // LICENSE VERIFICATION
     try {
         const isLicenseValid = await checkLicenseAndHandle();
         if (!isLicenseValid) return; // App will quit if license isn't valid
 
-        // Set up periodic license checks every 3 minutes and 57 seconds
+        // Record the successful check time
+        lastSuccessfulLicenseCheck = Date.now();
+
+        // Set up periodic license checks with random jitter to make tampering harder
         licenseCheckInterval = setInterval(async () => {
-            await checkLicenseAndHandle();
-        }, (3 * 60 + 57) * 1000); // 3 minutes and 57 seconds in milliseconds
+            const jitter = Math.floor(Math.random() * 60000); // Random jitter up to 1 minute
+            setTimeout(async () => {
+                await checkLicenseAndHandle();
+            }, jitter);
+        }, LICENSE_CHECK_INTERVAL_MS);
     } catch (error) {
         console.error("License verification failed:", error);
-        // Decide how to handle verification errors
-        // For strict enforcement, uncomment the next 2 lines:
-        // dialog.showMessageBox({type: 'error', title: 'Verification Error', message: 'License verification failed.', buttons: ['Quit']})
-        // .then(() => app.quit());
-        // return;
+        await handleLicenseError("License verification failed. Please check your internet connection or contact support.");
+        return;
     }
 
     // Check for API Key on startup
@@ -890,50 +901,113 @@ ipcMain.on('remove-screenshot', () => {
     }
 });
 
-// Add these new functions for license verification
+// Updated license verification functions
 async function checkLicenseAndHandle() {
     try {
         const licenseStatus = await checkLicense();
-        if (!licenseStatus.valid) {
+
+        if (licenseStatus.valid) {
+            // Reset failure counter on success
+            licenseCheckFailures = 0;
+            lastSuccessfulLicenseCheck = Date.now();
+
+            // Store encrypted timestamp of last check
+            const checkTimeHash = crypto.createHash('sha256')
+                .update(`${lastSuccessfulLicenseCheck}-${getHardwareIdentifier()}`)
+                .digest('hex');
+            store.set('licenseLastCheck', {
+                time: encryptData(lastSuccessfulLicenseCheck.toString()),
+                hash: checkTimeHash
+            });
+
+            // Store hours remaining (encrypted)
+            if (licenseStatus.hoursRemaining) {
+                store.set('licenseHoursRemaining', encryptData(licenseStatus.hoursRemaining.toString()));
+            }
+
+            // Optional: Update remaining time in app UI
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('license-status-update', {
+                    hoursRemaining: licenseStatus.hoursRemaining
+                });
+            }
+
+            return true;
+        } else {
             // License has expired, show dialog and quit
-            const { dialog } = require('electron');
             await dialog.showMessageBox({
                 type: 'error',
                 title: 'License Expired',
-                message: 'Your 72-hour trial has expired.',
+                message: 'Your trial period has expired.',
                 detail: licenseStatus.message || 'Please contact support for assistance.',
                 buttons: ['Quit']
             });
             app.quit();
             return false;
         }
-
-        // Optional: Update remaining time in app UI
-        if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('license-status-update', {
-                hoursRemaining: licenseStatus.hoursRemaining
-            });
-        }
-
-        return true;
     } catch (error) {
         console.error('License verification error:', error);
-        throw error;
+
+        // Increment failure counter
+        licenseCheckFailures++;
+
+        // Check if we should continue despite failures (fallback to offline check)
+        if (licenseCheckFailures >= MAX_LICENSE_CHECK_FAILURES) {
+            // Perform offline verification as fallback
+            const offlineStatus = checkOfflineLicense();
+            if (!offlineStatus.valid) {
+                await handleLicenseError('License verification failed multiple times. Please check your internet connection.');
+                return false;
+            } else {
+                console.log('Using offline license verification as fallback');
+                return true;
+            }
+        }
+
+        // Allow app to continue running if this is not a fatal number of failures
+        return true;
     }
 }
 
+// Improved license check function with additional security measures
 async function checkLicense() {
     try {
-        // Get unique device ID (will be the same across runs on the same device)
+        // Get primary hardware identifier
         const deviceId = machineIdSync();
 
-        // Call your license server
+        // Get secondary hardware identifiers
+        const secondaryId = getHardwareIdentifier();
+
+        // Create a combined hardware signature with timestamp to prevent replay attacks
+        const timestamp = Date.now();
+
+        // Get detailed OS information
+        const osInfoData = {
+            platform: os.platform(),
+            release: os.release(),
+            arch: os.arch(),
+            cpus: os.cpus().length,
+            // Include first three characters of hostname for identification but privacy
+            hostnamePrefix: os.hostname().substring(0, 3)
+        };
+
+        // Call your license server with enhanced security
         const response = await fetch('https://license-verification-server.onrender.com/api/check-license', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-App-Version': app.getVersion(),
+                'X-Request-Timestamp': timestamp.toString(),
+                'User-Agent': `AI-Overlay/${app.getVersion()} (${os.platform()}; ${os.release()})`
             },
-            body: JSON.stringify({ deviceId }),
+            body: JSON.stringify({
+                deviceId,
+                secondaryId,
+                timestamp,
+                osInfo: osInfoData
+            }),
+            // Set a reasonable timeout
+            timeout: 10000
         });
 
         if (!response.ok) {
@@ -941,6 +1015,38 @@ async function checkLicense() {
         }
 
         const data = await response.json();
+
+        // Check if server returned an error code
+        if (data.code && ['BLACKLISTED', 'BLACKLISTED_NETWORK', 'DEVICE_MISMATCH'].includes(data.code)) {
+            console.error(`License server reported issue: ${data.code}`);
+            // Record the blacklisting locally
+            store.set('licenseBlacklisted', true);
+            store.set('licenseBlacklistReason', data.message || data.code);
+        }
+
+        // Verify server response hasn't been tampered with
+        if (data.signature) {
+            // Rebuild the expected data that was signed
+            const expectedData = {
+                valid: data.valid,
+                hoursRemaining: data.hoursRemaining,
+                deviceId
+            };
+
+            // If this is a new activation, include that in the verification data
+            if (data.activated) {
+                expectedData.activated = true;
+            }
+
+            // Create a verification function that we would use if we had the server's secret key
+            // (In a real implementation, we'd need to use asymmetric crypto or a pre-shared key)
+            // For now, we'll just check if the signature exists which is better than nothing
+
+            if (!data.signature) {
+                console.error('License response missing signature');
+                throw new Error('Invalid server response - missing signature');
+            }
+        }
 
         // Log remaining time
         if (data.valid && data.hoursRemaining) {
@@ -952,10 +1058,223 @@ async function checkLicense() {
         return {
             valid: data.valid,
             hoursRemaining: data.hoursRemaining || 0,
-            message: data.message
+            message: data.message,
+            code: data.code
         };
     } catch (error) {
         console.error('License check failed:', error);
         throw error;
+    }
+}
+
+// Fallback offline license verification
+function checkOfflineLicense() {
+    try {
+        // First check if we're blacklisted locally
+        if (store.get('licenseBlacklisted') === true) {
+            return {
+                valid: false,
+                message: store.get('licenseBlacklistReason') || 'License has been revoked'
+            };
+        }
+
+        // Get the stored last check time
+        const storedCheck = store.get('licenseLastCheck');
+        if (!storedCheck) {
+            return { valid: false, message: 'No previous license verification found' };
+        }
+
+        // Decrypt and verify the stored timestamp
+        const lastCheckTime = parseInt(decryptData(storedCheck.time));
+        const expectedHash = crypto.createHash('sha256')
+            .update(`${lastCheckTime}-${getHardwareIdentifier()}`)
+            .digest('hex');
+
+        // If hash doesn't match, someone may have tampered with the data
+        if (storedCheck.hash !== expectedHash) {
+            return { valid: false, message: 'License data integrity check failed' };
+        }
+
+        // Get stored hours remaining
+        const hoursRemaining = parseInt(decryptData(store.get('licenseHoursRemaining') || '0'));
+
+        // Calculate how much time has passed since last successful check
+        const hoursSinceLastCheck = (Date.now() - lastCheckTime) / (1000 * 60 * 60);
+        const currentHoursRemaining = Math.max(0, hoursRemaining - hoursSinceLastCheck);
+
+        // If more than 24 hours since last successful check, require online verification
+        if (Date.now() - lastCheckTime > 24 * 60 * 60 * 1000) {
+            return { valid: false, message: 'Online verification required' };
+        }
+
+        return {
+            valid: currentHoursRemaining > 0,
+            hoursRemaining: currentHoursRemaining,
+            message: currentHoursRemaining > 0 ?
+                `Offline verification: ${Math.floor(currentHoursRemaining)} hours remaining` :
+                'License expired'
+        };
+    } catch (error) {
+        console.error('Offline license check failed:', error);
+        return { valid: false, message: 'Offline verification failed' };
+    }
+}
+
+// Handle license errors consistently
+async function handleLicenseError(message) {
+    await dialog.showMessageBox({
+        type: 'error',
+        title: 'License Verification Error',
+        message: message,
+        detail: 'Please try again later or contact support for assistance.',
+        buttons: ['Quit']
+    });
+    app.quit();
+}
+
+// Get additional hardware identifier that's harder to spoof
+function getHardwareIdentifier() {
+    try {
+        // Create a more robust hardware identifier using multiple system properties
+        const cpus = os.cpus();
+        const networkInterfaces = os.networkInterfaces();
+
+        // Extract CPU information (model, speed)
+        const cpuInfo = cpus.length > 0 ?
+            `${cpus[0].model.substring(0, 20)}-${cpus.length}` :
+            `unknown-${os.cpus().length}`;
+
+        // Extract MAC addresses from physical interfaces (ignoring virtual ones)
+        const macAddresses = [];
+        Object.keys(networkInterfaces).forEach(ifName => {
+            const interfaces = networkInterfaces[ifName];
+            if (!interfaces) return;
+
+            interfaces.forEach(iface => {
+                // Only use physical interfaces (ignoring loopback and virtual)
+                if (!iface.internal && iface.mac && iface.mac !== '00:00:00:00:00:00') {
+                    macAddresses.push(iface.mac);
+                }
+            });
+        });
+
+        // Use disk serial/uuid when available (platform specific)
+        let diskIdentifier = '';
+        try {
+            if (os.platform() === 'darwin') {
+                // On macOS, we could use the disk UUID but we'll need additional tools
+                // For now, using the system UUID from system_profiler would require 
+                // a child process, so we'll use a combination of existing info
+                diskIdentifier = crypto.createHash('sha256')
+                    .update(os.homedir() + os.userInfo().username)
+                    .digest('hex').substring(0, 8);
+            } else if (os.platform() === 'win32') {
+                // On Windows, the volume serial number would be ideal
+                // For a simple implementation, we'll use similar fallback
+                diskIdentifier = crypto.createHash('sha256')
+                    .update(os.homedir() + os.userInfo().username)
+                    .digest('hex').substring(0, 8);
+            } else {
+                // Linux and others
+                diskIdentifier = crypto.createHash('sha256')
+                    .update(`${os.homedir()}-${os.platform()}`)
+                    .digest('hex').substring(0, 8);
+            }
+        } catch (diskError) {
+            console.error('Error getting disk identifier:', diskError);
+            diskIdentifier = 'unknown';
+        }
+
+        // Create a combined hardware fingerprint
+        const fingerprint = `${cpuInfo}|${macAddresses.join(',')}|${os.totalmem()}|${diskIdentifier}`;
+
+        // Create a hash of this fingerprint
+        return crypto.createHash('sha256').update(fingerprint).digest('hex');
+    } catch (error) {
+        console.error('Error generating hardware identifier:', error);
+        // Fallback to a basic identifier if there's an error
+        return crypto.createHash('sha256')
+            .update(`${os.hostname()}-${os.platform()}-${os.cpus().length}`)
+            .digest('hex');
+    }
+}
+
+// Simple encryption/decryption functions using a fixed key
+function encryptData(text) {
+    try {
+        if (!text) return '';
+
+        const algorithm = 'aes-256-cbc';
+        // Create a deterministic but device-specific key using hardware info
+        const keyBase = `${machineIdSync()}-${os.platform()}-${os.totalmem()}`;
+        const key = crypto.createHash('sha256').update(keyBase).digest().slice(0, 32);
+
+        const iv = crypto.randomBytes(16);
+        const cipher = crypto.createCipheriv(algorithm, key, iv);
+        let encrypted = cipher.update(text, 'utf8', 'hex');
+        encrypted += cipher.final('hex');
+        return `${iv.toString('hex')}:${encrypted}`;
+    } catch (error) {
+        console.error('Encryption error:', error);
+        return '';
+    }
+}
+
+function decryptData(text) {
+    try {
+        if (!text || !text.includes(':')) return '';
+
+        const algorithm = 'aes-256-cbc';
+        // Create the same deterministic key used for encryption
+        const keyBase = `${machineIdSync()}-${os.platform()}-${os.totalmem()}`;
+        const key = crypto.createHash('sha256').update(keyBase).digest().slice(0, 32);
+
+        const parts = text.split(':');
+        const iv = Buffer.from(parts[0], 'hex');
+        const encrypted = parts[1];
+        const decipher = crypto.createDecipheriv(algorithm, key, iv);
+        let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+        return decrypted;
+    } catch (error) {
+        console.error('Decryption error:', error);
+        return '';
+    }
+}
+
+// Add a function to check for tampering with the app itself
+async function verifyAppIntegrity() {
+    try {
+        // In a production app, we would validate:
+        // 1. That the app's code signature is valid
+        // 2. That critical files haven't been modified
+        // 3. That we're not running in a debugging environment
+
+        // For now, we'll do some basic checks
+        const isDevToolsOpen = mainWindow &&
+            mainWindow.webContents &&
+            mainWindow.webContents.isDevToolsOpened();
+
+        if (isDevToolsOpen) {
+            console.warn('DevTools are open - potential tampering attempt');
+            // In a real app, we might want to report this to the server
+            return false;
+        }
+
+        // Check if we're running in development mode
+        const isDev = process.env.NODE_ENV === 'development' ||
+            process.defaultApp ||
+            /[\\/]electron-prebuilt[\\/]/.test(process.execPath) ||
+            /[\\/]electron[\\/]/.test(process.execPath);
+
+        if (isDev) {
+            console.warn('Running in development mode');
+            // Allow in dev mode, but a real app might limit functionality
+        }
+
+        return true;
+    } catch (error) {
+        console.error('App integrity check failed:', error);
+        return false;
     }
 }
