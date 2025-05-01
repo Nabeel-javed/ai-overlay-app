@@ -59,11 +59,6 @@ window.electronAPI.onResetTool(() => {
     resetTool();
 });
 
-// --- IPC Listener for license update ---
-window.electronAPI.onLicenseUpdate((data) => {
-    console.log(`License time remaining: ${data.hoursRemaining} hours`);
-    // Update your UI as needed
-});
 
 // Get current model from settings
 async function getCurrentModelFromSettings() {
@@ -133,7 +128,7 @@ function removeScreenshot() {
 function resetTool() {
     // Clear input and response text areas
     inputTextArea.value = '';
-    responseTextArea.value = '';
+    responseTextArea.innerHTML = '';
 
     // Remove any screenshot
     if (currentScreenshot) {
@@ -204,13 +199,13 @@ submitButton.addEventListener('click', async () => {
 
     // Check if we have either text input or a screenshot
     if (!inputText && !currentScreenshot) {
-        responseTextArea.value = "Please enter text or capture a screenshot.";
+        responseTextArea.innerHTML = "Please enter text or capture a screenshot.";
         return;
     }
 
     loadingIndicator.classList.remove('hidden');
     submitButton.disabled = true;
-    responseTextArea.value = 'Sending request to AI...';
+    responseTextArea.innerHTML = 'Sending request to AI...';
 
     try {
         // Prepare the payload - combine text, instructions, and screenshot if available
@@ -242,12 +237,26 @@ submitButton.addEventListener('click', async () => {
 
         console.log('Renderer received result from main:', result);
         if (result.success) {
-            responseTextArea.value = result.success;
+            // Use innerHTML instead of value since we're working with a div now
+            responseTextArea.innerHTML = result.success;
+            // Render LaTeX using MathJax
+            setTimeout(() => {
+                if (typeof window.typeset === 'function') {
+                    try {
+                        window.typeset();
+                        console.log('MathJax rendering triggered');
+                    } catch (error) {
+                        console.error('MathJax error:', error);
+                    }
+                } else {
+                    console.error('MathJax typeset function not found');
+                }
+            }, 100);
         } else {
-            responseTextArea.value = `Error: ${result.error || 'An unknown error occurred.'}`;
+            responseTextArea.innerHTML = `Error: ${result.error || 'An unknown error occurred.'}`;
         }
     } catch (error) {
-        responseTextArea.value = `IPC Error: ${error.message}`;
+        responseTextArea.innerHTML = `IPC Error: ${error.message}`;
     } finally {
         loadingIndicator.classList.add('hidden');
         submitButton.disabled = !inputTextArea.value.trim() && !currentScreenshot;

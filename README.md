@@ -120,9 +120,7 @@ This application is built with:
 - The application does not collect or transmit any user data
 - Screenshots are processed locally and only sent directly to the selected AI provider
 
-## License
 
-This project is licensed under the ISC License.
 
 ## Troubleshooting
 

@@ -12,7 +12,6 @@
   },
   "keywords": [],
   "author": "Tonya",
-  "license": "ISC",
   "devDependencies": {
     "electron": "^29.1.5",
     "electron-builder": "^26.0.12"

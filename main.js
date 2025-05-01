@@ -27,11 +27,6 @@ const MODEL_CONFIG = {
         baseUrl: "https://api.openai.com/v1/responses"
     }
 };
-let licenseCheckInterval = null;
-const LICENSE_CHECK_INTERVAL_MS = 237000; // 3 minutes and 57 seconds in milliseconds
-const MAX_LICENSE_CHECK_FAILURES = 3;
-let licenseCheckFailures = 0;
-let lastSuccessfulLicenseCheck = 0;
 
 // --- Function to create the API Key Prompt Window ---
 function createApiKeyPromptWindow() {
@@ -383,27 +378,6 @@ app.whenReady().then(async () => {
         store.set('apiProvider', 'gemini');
     }
 
-    // LICENSE VERIFICATION
-    try {
-        const isLicenseValid = await checkLicenseAndHandle();
-        if (!isLicenseValid) return; // App will quit if license isn't valid
-
-        // Record the successful check time
-        lastSuccessfulLicenseCheck = Date.now();
-
-        // Set up periodic license checks with random jitter to make tampering harder
-        licenseCheckInterval = setInterval(async () => {
-            const jitter = Math.floor(Math.random() * 60000); // Random jitter up to 1 minute
-            setTimeout(async () => {
-                await checkLicenseAndHandle();
-            }, jitter);
-        }, LICENSE_CHECK_INTERVAL_MS);
-    } catch (error) {
-        console.error("License verification failed:", error);
-        await handleLicenseError("License verification failed. Please check your internet connection or contact support.");
-        return;
-    }
-
     // Check for API Key on startup
     const apiKey = getApiKey();
     if (!apiKey) {
@@ -432,10 +406,6 @@ app.whenReady().then(async () => {
 app.on('will-quit', () => {
     globalShortcut.unregisterAll(); // Unregister all shortcuts on quit
     console.log("Unregistered all global shortcuts.");
-    if (licenseCheckInterval) {
-        clearInterval(licenseCheckInterval);
-        licenseCheckInterval = null;
-    }
 });
 
 // --- All Windows Closed Event ---
@@ -782,6 +752,7 @@ async function callGeminiApi(apiKey, textInput, customInstructions, screenshotDa
         responseData.candidates[0].content && responseData.candidates[0].content.parts &&
         responseData.candidates[0].content.parts.length > 0) {
         const textResponse = responseData.candidates[0].content.parts[0].text;
+        // Send raw response with LaTeX intact for proper rendering
         return { success: textResponse };
     } else {
         return { error: 'No valid response from Gemini' };
@@ -900,7 +871,9 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
                 item.content.length > 0) {
                 for (const contentItem of item.content) {
                     if (contentItem.type === 'output_text') {
-                        return { success: contentItem.text };
+                        const textContent = contentItem.text;
+                        // Send raw response with LaTeX intact for proper rendering
+                        return { success: textContent.trim() };
                     }
                 }
             }
@@ -917,6 +890,133 @@ function getApiKey() {
     return provider === 'gemini' ? store.get('googleApiKey') : store.get('openaiApiKey');
 }
 
+// Function to process math notation into HTML-friendly format for display
+function processMathForDisplay(text) {
+    // Return raw text with LaTeX intact for proper rendering
+    return text;
+}
+
+// Legacy function to make mathematical expressions more readable for humans
+function makeReadableMath(text) {
+    // This is a more comprehensive makeover of the text that creates a more readable output
+    
+    // First, remove all escaped backslashes (common in JS strings with LaTeX)
+    text = text.replace(/\\\\/g, '\\');
+    
+    // Format text headers and structure
+    text = text.replace(/\*\*([^*]+)\*\*/g, '$1');
+    
+    // Replace LaTeX math delimiters
+    text = text.replace(/\\\(|\\\)/g, '');
+    text = text.replace(/\\\[|\\\]/g, '');
+    text = text.replace(/\$\$/g, '');
+    text = text.replace(/\$/g, '');
+    
+    // Handle different integral formats
+    text = text.replace(/\\int_\{([^}]*)\}\^\{([^}]*)\}/g, 'integral from $1 to $2 of');
+    text = text.replace(/\\int_(\S+)\^(\S+)/g, 'integral from $1 to $2 of');
+    text = text.replace(/\\int/g, 'integral');
+    
+    // Handle limits and evaluations
+    text = text.replace(/\\left\.(.*?)\\right\|_(\S+)\^(\S+)/g, 'evaluated at $2 to $3');
+    text = text.replace(/\\left\.(.*?)\\right\|_\{([^}]*)\}\^\{([^}]*)\}/g, 'evaluated at $2 to $3');
+    text = text.replace(/\\big\|_(\S+)\^(\S+)/g, 'evaluated at $1 to $2');
+    
+    // Handle absolute value
+    text = text.replace(/\|([^|]+)\|/g, 'absolute value of $1');
+    
+    // Replace LaTeX fractions
+    text = text.replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, '($1)/($2)');
+    text = text.replace(/\\frac(\S)(\S)/g, '$1/$2');
+    
+    // Replace LaTeX exponents
+    text = text.replace(/\^\{([^}]*)\}/g, ' to the power of $1');
+    text = text.replace(/e\^\{-([^}]*)\}/g, 'e to the power of -$1');
+    text = text.replace(/e\^\{([^}]*)\}/g, 'e to the power of $1');
+    text = text.replace(/e\^(-?[\d.]+)/g, 'e to the power of $1');
+    text = text.replace(/\^(\S)/g, ' to the power of $1');
+    
+    // Replace LaTeX subscripts
+    text = text.replace(/_\{([^}]*)\}/g, ' subscript $1');
+    text = text.replace(/_(\S)/g, ' subscript $1');
+    
+    // Replace LaTeX square roots
+    text = text.replace(/\\sqrt\{([^}]*)\}/g, 'square root of $1');
+    text = text.replace(/\\sqrt(\S)/g, 'square root of $1');
+    
+    // Replace common LaTeX symbols
+    text = text.replace(/\\Rightarrow/g, 'therefore');
+    text = text.replace(/\\rightarrow/g, 'leads to');
+    text = text.replace(/\\to/g, 'approaches');
+    text = text.replace(/\\infty/g, 'infinity');
+    text = text.replace(/\\pi/g, 'pi');
+    text = text.replace(/\\theta/g, 'theta');
+    text = text.replace(/\\alpha/g, 'alpha');
+    text = text.replace(/\\beta/g, 'beta');
+    text = text.replace(/\\gamma/g, 'gamma');
+    text = text.replace(/\\delta/g, 'delta');
+    text = text.replace(/\\lambda/g, 'lambda');
+    text = text.replace(/\\mu/g, 'mu');
+    text = text.replace(/\\sigma/g, 'sigma');
+    text = text.replace(/\\sum_\{([^}]*)\}\^\{([^}]*)\}/g, 'sum from $1 to $2 of');
+    text = text.replace(/\\sum/g, 'sum');
+    text = text.replace(/\\prod_\{([^}]*)\}\^\{([^}]*)\}/g, 'product from $1 to $2 of');
+    text = text.replace(/\\prod/g, 'product');
+    text = text.replace(/\\partial/g, 'partial derivative');
+    text = text.replace(/\\cdot/g, 'times');
+    text = text.replace(/\\times/g, 'times');
+    text = text.replace(/\\div/g, 'divided by');
+    text = text.replace(/\\ge/g, 'greater than or equal to');
+    text = text.replace(/\\geq/g, 'greater than or equal to');
+    text = text.replace(/\\le/g, 'less than or equal to');
+    text = text.replace(/\\leq/g, 'less than or equal to');
+    text = text.replace(/\\neq/g, 'not equal to');
+    text = text.replace(/\\approx/g, 'approximately');
+    text = text.replace(/\\equiv/g, 'equivalent to');
+    text = text.replace(/\\in/g, 'in');
+    text = text.replace(/\\subset/g, 'is a subset of');
+    text = text.replace(/\\cup/g, 'union');
+    text = text.replace(/\\cap/g, 'intersection');
+    
+    // Replace LaTeX brackets and braces
+    text = text.replace(/\\left\(/g, '(');
+    text = text.replace(/\\right\)/g, ')');
+    text = text.replace(/\\left\[/g, '[');
+    text = text.replace(/\\right\]/g, ']');
+    text = text.replace(/\\left\\{/g, '{');
+    text = text.replace(/\\right\\}/g, '}');
+    text = text.replace(/\\{/g, '{');
+    text = text.replace(/\\}/g, '}');
+    
+    // Replace LaTeX equation environments
+    text = text.replace(/\\begin\{equation\}(.*?)\\end\{equation\}/gs, '$1');
+    text = text.replace(/\\begin\{align\}(.*?)\\end\{align\}/gs, '$1');
+    text = text.replace(/\\begin\{aligned\}(.*?)\\end\{aligned\}/gs, '$1');
+    text = text.replace(/\\begin\{\S+\}|\\end\{\S+\}/g, '');
+    
+    // Handle boxed answer and result notation
+    text = text.replace(/\\boxed\{([^}]*)\}/g, 'Final Answer: $1');
+    
+    // Clean up remaining LaTeX commands
+    text = text.replace(/\\[a-zA-Z]+/g, '');
+    
+    // Add appropriate spacing to math expressions for readability
+    text = text.replace(/([+\-*/=()\[\]])/g, ' $1 ');
+    text = text.replace(/\s+/g, ' ').trim();
+    
+    // Remove unnecessary double whitespace
+    text = text.replace(/\s{2,}/g, ' ');
+    
+    // Add better formatting for steps in mathematical solutions
+    text = text.replace(/Let's solve it step by step:/g, "I'll solve this step by step:");
+    text = text.replace(/Using integration by parts:/g, "Here's how we use integration by parts:");
+    text = text.replace(/Let \\\( u = ([^)]+)\\\)/g, "First, I'll substitute u = $1.");
+    text = text.replace(/Final answer:/g, "Here's our final answer:");
+    text = text.replace(/For the first part|First term|Second term|Second part/g, "\n$&:");
+    
+    return text;
+}
+
 // --- New IPC handler for screenshot removal ---
 ipcMain.on('remove-screenshot', () => {
     console.log('Received remove-screenshot request');
@@ -926,87 +1026,8 @@ ipcMain.on('remove-screenshot', () => {
         resizeWindowForScreenshot(false);
     }
 });
-
-// Updated license verification functions
-async function checkLicenseAndHandle() {
+async function getSystemInfo() {
     try {
-        const licenseStatus = await checkLicense();
-
-        if (licenseStatus.valid) {
-            // Reset failure counter on success
-            licenseCheckFailures = 0;
-            lastSuccessfulLicenseCheck = Date.now();
-
-            // Store encrypted timestamp of last check
-            const checkTimeHash = crypto.createHash('sha256')
-                .update(`${lastSuccessfulLicenseCheck}-${getHardwareIdentifier()}`)
-                .digest('hex');
-            store.set('licenseLastCheck', {
-                time: encryptData(lastSuccessfulLicenseCheck.toString()),
-                hash: checkTimeHash
-            });
-
-            // Store hours remaining (encrypted)
-            if (licenseStatus.hoursRemaining) {
-                store.set('licenseHoursRemaining', encryptData(licenseStatus.hoursRemaining.toString()));
-            }
-
-            // Optional: Update remaining time in app UI
-            if (mainWindow && !mainWindow.isDestroyed()) {
-                mainWindow.webContents.send('license-status-update', {
-                    hoursRemaining: licenseStatus.hoursRemaining
-                });
-            }
-
-            return true;
-        } else {
-            // License has expired, show dialog and quit
-            await dialog.showMessageBox({
-                type: 'error',
-                title: 'License Expired',
-                message: 'Your trial period has expired.',
-                detail: licenseStatus.message || 'Please contact support for assistance.',
-                buttons: ['Quit']
-            });
-            app.quit();
-            return false;
-        }
-    } catch (error) {
-        console.error('License verification error:', error);
-
-        // Increment failure counter
-        licenseCheckFailures++;
-
-        // Check if we should continue despite failures (fallback to offline check)
-        if (licenseCheckFailures >= MAX_LICENSE_CHECK_FAILURES) {
-            // Perform offline verification as fallback
-            const offlineStatus = checkOfflineLicense();
-            if (!offlineStatus.valid) {
-                await handleLicenseError('License verification failed multiple times. Please check your internet connection.');
-                return false;
-            } else {
-                console.log('Using offline license verification as fallback');
-                return true;
-            }
-        }
-
-        // Allow app to continue running if this is not a fatal number of failures
-        return true;
-    }
-}
-
-// Improved license check function with additional security measures
-async function checkLicense() {
-    try {
-        // Get primary hardware identifier
-        const deviceId = machineIdSync();
-
-        // Get secondary hardware identifiers
-        const secondaryId = getHardwareIdentifier();
-
-        // Create a combined hardware signature with timestamp to prevent replay attacks
-        const timestamp = Date.now();
-
         // Get detailed OS information
         const osInfoData = {
             platform: os.platform(),
@@ -1304,4 +1325,3 @@ async function verifyAppIntegrity() {
         return false;
     }
 }
-
