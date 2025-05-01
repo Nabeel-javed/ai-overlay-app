@@ -239,6 +239,9 @@ function registerShortcuts() {
         'CommandOrControl+Shift+S': () => captureScreenshot(),
         // --- Reset Tool Shortcut ---
         'CommandOrControl+R': () => resetTool(),
+        // --- Opacity Control Shortcuts ---
+        'CommandOrControl+[': () => adjustOpacity(-0.05),
+        'CommandOrControl+]': () => adjustOpacity(0.05),
     };
 
     for (const accelerator in shortcuts) {
@@ -276,6 +279,16 @@ function moveWindow(deltaX, deltaY) {
     } catch (error) {
         console.error("Error moving window:", error);
     }
+}
+
+// --- Helper function to adjust window opacity ---
+function adjustOpacity(delta) {
+    if (!mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible()) return;
+    const currentOpacity = mainWindow.getOpacity();
+    // Calculate new opacity and ensure it's within valid range (0.2 to 1.0)
+    const newOpacity = Math.max(0.2, Math.min(1.0, currentOpacity + delta));
+    mainWindow.setOpacity(newOpacity);
+    console.log(`Adjusted opacity: ${newOpacity.toFixed(2)}`);
 }
 
 // --- Screenshot Capture Function ---
