@@ -192,8 +192,8 @@ if (reasoningCheckbox && reasoningLabel) {
     });
 }
 
-// --- Event Listener: Submit Button ---
-submitButton.addEventListener('click', async () => {
+// Function to handle AI submission
+async function submitToAI() {
     const inputText = inputTextArea.value.trim();
     const customInstructions = instructionsTextArea.value.trim();
 
@@ -209,7 +209,7 @@ submitButton.addEventListener('click', async () => {
 
     try {
         // Prepare the payload - combine text, instructions, and screenshot if available
-        let payload = inputText;
+        let payload;
 
         // If we have a screenshot, add information about it
         if (currentScreenshot) {
@@ -256,10 +256,33 @@ submitButton.addEventListener('click', async () => {
             responseTextArea.innerHTML = `Error: ${result.error || 'An unknown error occurred.'}`;
         }
     } catch (error) {
-        responseTextArea.innerHTML = `IPC Error: ${error.message}`;
+        console.error('Error sending request:', error);
+        responseTextArea.innerHTML = `Error: ${error.message || 'Failed to get response from AI.'}`;
     } finally {
         loadingIndicator.classList.add('hidden');
-        submitButton.disabled = !inputTextArea.value.trim() && !currentScreenshot;
+        submitButton.disabled = false;
+        updateSubmitButton();
+    }
+}
+
+// --- Event Listener: Submit Button ---
+submitButton.addEventListener('click', submitToAI);
+
+// --- Event Listener: Input Textarea (Cmd+Enter) ---
+inputTextArea.addEventListener('keydown', (event) => {
+    // Check for Cmd+Enter (Mac) or Ctrl+Enter (Windows/Linux)
+    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+        event.preventDefault(); // Prevent default behavior (newline)
+        submitToAI();
+    }
+});
+
+// --- Event Listener: Instructions Textarea (Cmd+Enter) ---
+instructionsTextArea.addEventListener('keydown', (event) => {
+    // Check for Cmd+Enter (Mac) or Ctrl+Enter (Windows/Linux)
+    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+        event.preventDefault(); // Prevent default behavior (newline)
+        submitToAI();
     }
 });
 
