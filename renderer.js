@@ -23,10 +23,18 @@ const reasoningLabel = document.getElementById('reasoning-label');
 // Add model selector buttons references
 const modelButtons = document.querySelectorAll('.model-btn');
 
+// Add provider selector buttons references
+const providerButtons = document.querySelectorAll('.provider-btn');
+const modelSelector = document.getElementById('openai-model-selector');
+const deepseekReasoningToggle = document.getElementById('deepseek-reasoning-toggle');
+const deepseekReasoningCheckbox = document.getElementById('enable-reasoning-deepseek');
+
 // Variable to store the current screenshot data URL
 let currentScreenshot = null;
 // Variable to store the current selected model
-let currentModel = 'o4mini-high'; // Default to GPT-4 Mini
+let currentModel = '4.1'; // Default to GPT-4.1
+// Variable to store the current provider
+let currentProvider = 'gemini'; // Default to Gemini
 
 // --- REMOVED: IPC Listener for clipboard text ---
 // window.electronAPI.onSetInputText((text) => { ... });
@@ -38,6 +46,21 @@ window.electronAPI.onFocusInput(() => {
     inputTextArea.focus();
     // Optional: Select existing text?
     // inputTextArea.select();
+});
+
+// --- NEW: IPC Listener for checking which element to focus ---
+// Checks if a screenshot is present and focuses the appropriate field
+window.electronAPI.onCheckFocusTarget(() => {
+    console.log('Renderer received check-focus-target request.');
+    if (currentScreenshot && !screenshotSection.classList.contains('hidden')) {
+        // If a screenshot is present, focus the custom instructions textarea
+        console.log('Screenshot present, focusing instructions textarea');
+        instructionsTextArea.focus();
+    } else {
+        // Otherwise, focus the main input textarea
+        console.log('No screenshot, focusing main input textarea');
+        inputTextArea.focus();
+    }
 });
 
 // --- IPC Listener for screenshot capture ---
@@ -60,16 +83,46 @@ window.electronAPI.onResetTool(() => {
 });
 
 
-// Get current model from settings
-async function getCurrentModelFromSettings() {
+// Get current model and provider from settings
+async function getCurrentProviderAndModelFromSettings() {
     try {
         const settings = await window.electronAPI.getSettings();
-        if (settings && settings.openaiModel) {
-            currentModel = settings.openaiModel;
-            updateModelUI(currentModel);
+        if (settings) {
+            if (settings.provider) {
+                currentProvider = settings.provider;
+                updateProviderUI(currentProvider);
+            }
+            if (settings.openaiModel) {
+                currentModel = settings.openaiModel;
+                updateModelUI(currentModel);
+            }
         }
     } catch (error) {
-        console.error('Error getting current model:', error);
+        console.error('Error getting current settings:', error);
+    }
+}
+
+// Update the provider UI to reflect the current selected provider
+function updateProviderUI(providerId) {
+    providerButtons.forEach(button => {
+        if (button.dataset.provider === providerId) {
+            button.classList.add('active');
+        } else {
+            button.classList.remove('active');
+        }
+    });
+
+    // Show/hide model selector and reasoning toggle based on provider
+    if (providerId === 'openai') {
+        modelSelector.style.display = 'flex';
+        deepseekReasoningToggle.style.display = 'none';
+    } else if (providerId === 'deepseek') {
+        modelSelector.style.display = 'none';
+        deepseekReasoningToggle.style.display = 'flex';
+    } else {
+        // Gemini - hide both
+        modelSelector.style.display = 'none';
+        deepseekReasoningToggle.style.display = 'none';
     }
 }
 
@@ -165,6 +218,23 @@ if (settingsButton) {
     });
 }
 
+// --- Event Listener: Provider Buttons ---
+providerButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        const providerId = button.dataset.provider;
+        console.log(`Provider button clicked: ${providerId}`);
+
+        // Update UI first
+        updateProviderUI(providerId);
+
+        // Update the currentProvider variable
+        currentProvider = providerId;
+
+        // Save provider selection
+        window.electronAPI.selectProvider(providerId);
+    });
+});
+
 // --- Event Listener: Model Buttons ---
 modelButtons.forEach(button => {
     button.addEventListener('click', () => {
@@ -191,6 +261,22 @@ if (reasoningCheckbox && reasoningLabel) {
         window.electronAPI.toggleReasoning(isEnabled);
     });
 }
+
+// --- Event Listener: DeepSeek Reasoning Checkbox ---
+if (deepseekReasoningCheckbox) {
+    deepseekReasoningCheckbox.addEventListener('change', (event) => {
+        const isEnabled = event.target.checked;
+        console.log(`DeepSeek reasoning checkbox changed to: ${isEnabled}`);
+        window.electronAPI.toggleDeepSeekReasoning(isEnabled);
+    });
+}
+
+// --- IPC Listener for provider changes ---
+window.electronAPI.onProviderChanged((provider) => {
+    console.log('Provider changed to:', provider);
+    currentProvider = provider;
+    updateProviderUI(provider);
+});
 
 // Function to handle AI submission
 async function submitToAI() {
@@ -308,8 +394,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Focus might be set initially by main process or via hotkey.
     submitButton.disabled = true; // Disable initially until input or screenshot
 
-    // Get current model from settings
-    await getCurrentModelFromSettings();
+    // Get current provider and model from settings
+    await getCurrentProviderAndModelFromSettings();
 
     // Get initial reasoning state and set checkbox
     if (reasoningCheckbox && reasoningLabel) {
@@ -326,6 +412,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (error) {
             console.error('Error getting initial reasoning state:', error);
+        }
+    }
+
+    // Get initial DeepSeek reasoning state and set checkbox
+    if (deepseekReasoningCheckbox) {
+        try {
+            const initialDeepSeekState = await window.electronAPI.getDeepSeekReasoningState();
+            console.log('Initial DeepSeek reasoning state received:', initialDeepSeekState);
+            deepseekReasoningCheckbox.checked = initialDeepSeekState;
+        } catch (error) {
+            console.error('Error getting initial DeepSeek reasoning state:', error);
         }
     }
 });

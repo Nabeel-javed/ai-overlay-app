@@ -3,14 +3,14 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" 
+    <meta http-equiv="Content-Security-Policy"
         content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://cdn.jsdelivr.net; font-src 'self' data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; img-src 'self' data: https://cdn.jsdelivr.net;">
     <link rel="stylesheet" href="style.css">
     <title>Spectro</title>
     <!-- MathJax for rendering mathematical notation -->
     <script type="text/javascript" id="MathJax-script" async
         src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
-    </script>
+        </script>
     <script>
         window.MathJax = {
             tex: {
@@ -24,9 +24,9 @@
                 processHtmlClass: 'math'
             }
         };
-        document.addEventListener("DOMContentLoaded", function() {
+        document.addEventListener("DOMContentLoaded", function () {
             // Make MathJax available to the renderer process
-            window.typeset = function() {
+            window.typeset = function () {
                 if (typeof MathJax !== 'undefined') {
                     MathJax.typeset();
                 }
@@ -63,20 +63,29 @@
             <button id="dismiss-button">Dismiss</button>
 
             <div class="controls-right">
-                <!-- Model selector buttons -->
-                <div class="model-selector">
-                    <span class="model-label">Model:</span>
-                    <div class="model-buttons">
-                        <button class="model-btn active" data-model="o4mini-high">GPT-4 Mini</button>
-                        <button class="model-btn" data-model="4.1">GPT-4.1</button>
+                <!-- Provider selector buttons -->
+                <div class="provider-selector">
+                    <span class="provider-label">Provider:</span>
+                    <div class="provider-buttons">
+                        <button class="provider-btn active" data-provider="openai">OpenAI</button>
+                        <button class="provider-btn" data-provider="gemini">Gemini</button>
+                        <button class="provider-btn" data-provider="deepseek">DeepSeek</button>
                     </div>
                 </div>
 
-                <!-- Reasoning toggle checkbox -->
-                <div class="reasoning-toggle">
-                    <input type="checkbox" id="enable-reasoning-main" name="enable-reasoning-main">
-                    <label for="enable-reasoning-main" id="reasoning-label"
-                        title="Enable Reasoning (GPT-4 Mini only)">Reasoning</label>
+                <!-- Model selector buttons (only for OpenAI) -->
+                <div class="model-selector" id="openai-model-selector">
+                    <span class="model-label">Model:</span>
+                    <div class="model-buttons">
+                        <button class="model-btn active" data-model="4.1">GPT-4.1</button>
+                    </div>
+                </div>
+
+                <!-- Reasoning toggle checkbox (for DeepSeek R1) -->
+                <div class="reasoning-toggle" id="deepseek-reasoning-toggle" style="display: none;">
+                    <input type="checkbox" id="enable-reasoning-deepseek" name="enable-reasoning-deepseek">
+                    <label for="enable-reasoning-deepseek" id="deepseek-reasoning-label"
+                        title="Enable R1 Reasoning Model">R1 Mode</label>
                 </div>
             </div>
 
@@ -90,7 +99,8 @@
 
         <div class="section">
             <label for="response-textarea">AI Response:</label>
-            <div id="response-textarea" class="text-area response-area" style="overflow-y: auto; white-space: pre-wrap;"></div>
+            <div id="response-textarea" class="text-area response-area"
+                style="overflow-y: auto; white-space: pre-wrap;"></div>
         </div>
     </div>
 

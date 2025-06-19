@@ -13,6 +13,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Usage in renderer.js: window.electronAPI.onFocusInput(() => { inputTextArea.focus(); });
   onFocusInput: (callback) => ipcRenderer.on('focus-input', (event, ...args) => callback(...args)),
 
+  // New channel: main process -> renderer process (one-way)
+  // Listens for a message from the main process to check which element to focus
+  // based on whether a screenshot is present or not
+  // Usage in renderer.js: window.electronAPI.onCheckFocusTarget(() => { checkAndFocusAppropriateField(); });
+  onCheckFocusTarget: (callback) => ipcRenderer.on('check-focus-target', (event) => callback()),
+
   // Channel: renderer process -> main process (one-way)
   // Sends a message from the renderer (e.g., when the Dismiss button is clicked)
   // to the main process, telling it to hide the overlay window.
@@ -64,7 +70,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // New channels for model selection
   getSettings: () => ipcRenderer.invoke('get-settings'),
-  saveModelSelection: (modelId) => ipcRenderer.send('save-model-selection', modelId)
+  saveModelSelection: (modelId) => ipcRenderer.send('save-model-selection', modelId),
+
+  // Provider selection channels
+  selectProvider: (provider) => ipcRenderer.send('select-provider', provider),
+  getCurrentProvider: () => ipcRenderer.invoke('get-current-provider'),
+  onProviderChanged: (callback) => ipcRenderer.on('provider-changed', (event, provider) => callback(provider)),
+
+  // DeepSeek reasoning toggle
+  toggleDeepSeekReasoning: (enabled) => ipcRenderer.send('toggle-deepseek-reasoning', enabled),
+  getDeepSeekReasoningState: () => ipcRenderer.invoke('get-deepseek-reasoning-state')
 });
 
 console.log('Preload script executed');

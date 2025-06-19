@@ -1,12 +1,11 @@
 // main.js
-const { app, BrowserWindow, globalShortcut, ipcMain, desktopCapturer, screen, Menu, dialog } = require('electron'); // Added dialog explicitly
+const { app, BrowserWindow, globalShortcut, ipcMain, desktopCapturer, screen, Menu, dialog, shell, nativeImage } = require('electron'); // Added dialog explicitly
 const path = require('path');
 const { machineIdSync } = require('node-machine-id');
 const fetch = require('node-fetch');
 const crypto = require('crypto');
 const os = require('os');
-// const Store = require('electron-store'); // <<< REMOVE THIS LINE
-// const fetch = require('node-fetch'); // Uncomment if using node-fetch instead of built-in fetch
+
 
 // Set app name
 app.name = 'Spectro';
@@ -17,14 +16,55 @@ let apiKeyWindow;
 let settingsWindow; // Add settings window reference
 let store; // Declare globally, initialize later
 const MOVE_STEP = 20; // Pixels to move the window per hotkey press
+
+// Configuration for different models
 const MODEL_CONFIG = {
-    "o4mini-high": {
-        modelName: "o4-mini",
-        baseUrl: "https://api.openai.com/v1/responses"
-    },
     "4.1": {
         modelName: "gpt-4.1",
         baseUrl: "https://api.openai.com/v1/responses"
+    },
+    "deepseek-chat": {
+        modelName: "deepseek-chat",
+        baseUrl: "https://api.deepseek.com/v1/chat/completions"
+    },
+    "deepseek-reasoner": {
+        modelName: "deepseek-reasoner",
+        baseUrl: "https://api.deepseek.com/v1/chat/completions"
+    }
+};
+
+// Provider configurations
+const PROVIDER_CONFIG = {
+    openai: {
+        name: "OpenAI",
+        models: {
+            "4.1": {
+                modelName: "gpt-4.1",
+                baseUrl: "https://api.openai.com/v1/chat/completions"
+            }
+        }
+    },
+    gemini: {
+        name: "Google Gemini",
+        models: {
+            "gemini-1.5-pro": {
+                modelName: "gemini-1.5-pro",
+                baseUrl: "https://generativelanguage.googleapis.com/v1beta/models"
+            }
+        }
+    },
+    deepseek: {
+        name: "DeepSeek",
+        models: {
+            "deepseek-chat": {
+                modelName: "deepseek-chat",
+                baseUrl: "https://api.deepseek.com/v1/chat/completions"
+            },
+            "deepseek-reasoner": {
+                modelName: "deepseek-reasoner",
+                baseUrl: "https://api.deepseek.com/v1/chat/completions"
+            }
+        }
     }
 };
 
@@ -263,7 +303,9 @@ function focusWindowAndInput() {
         mainWindow.focus();
         mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true }); // Reaffirm
         if (mainWindow.webContents) {
-            mainWindow.webContents.send('focus-input'); // Tell renderer to focus input
+            // Instead of always focusing the main input, check if there's a screenshot
+            // and focus the custom instructions textarea if so
+            mainWindow.webContents.send('check-focus-target');
         }
     } catch (error) {
         console.error("Error during window focus:", error.message);
@@ -325,7 +367,10 @@ async function captureScreenshot() {
         if (primarySource) {
             // Show the window again
             mainWindow.show();
-            setTimeout(() => focusWindowAndInput(), 200);
+            setTimeout(() => {
+                // Use the new check-focus-target message to focus the appropriate field
+                mainWindow.webContents.send('check-focus-target');
+            }, 200);
 
             // Convert the thumbnail to a data URL and send it to the renderer
             const screenshotDataUrl = primarySource.thumbnail.toDataURL();
@@ -380,11 +425,23 @@ app.whenReady().then(async () => {
     }
 
     console.log("App ready. Initializing Store...");
-    const Store = (await import('electron-store')).default;
-    store = new Store({
-        encryptionKey: 'your-secure-encryption-key', // Add encryption to the store
-    });
-    console.log("Store instance:", store);
+    try {
+        const Store = (await import('electron-store')).default;
+        store = new Store({
+            encryptionKey: process.platform === 'darwin' ? 'spectro-encryption-key' : machineIdSync()
+        });
+        console.log("Store instance:", store);
+    } catch (error) {
+        console.error("Error initializing store:", error);
+        // If store initialization fails, try without encryption
+        try {
+            const Store = (await import('electron-store')).default;
+            store = new Store();
+            console.log("Store initialized without encryption as fallback");
+        } catch (fallbackError) {
+            console.error("Failed to initialize store even without encryption:", fallbackError);
+        }
+    }
 
     // Set default provider if not set
     if (!store.get('apiProvider')) {
@@ -460,6 +517,8 @@ ipcMain.handle('save-api-key', (event, apiData) => {
         // Store the API key in the appropriate field based on the provider
         if (provider === 'openai') {
             store.set('openaiApiKey', apiKey.trim());
+        } else if (provider === 'deepseek') {
+            store.set('deepseekApiKey', apiKey.trim());
         } else {
             store.set('googleApiKey', apiKey.trim());
         }
@@ -497,8 +556,10 @@ ipcMain.handle('get-settings', async (event) => {
         provider: store.get('apiProvider') || 'gemini',
         geminiKey: store.get('googleApiKey') || '',
         openaiKey: store.get('openaiApiKey') || '',
-        openaiModel: store.get('openaiModel') || 'o4mini-high',
-        enableReasoning: store.get('enableReasoning') || false
+        deepseekKey: store.get('deepseekApiKey') || '',
+        openaiModel: store.get('openaiModel') || '4.1',
+        enableReasoning: store.get('enableReasoning') || false,
+        deepseekUseReasoning: store.get('deepseekUseReasoning') || false
     };
 });
 
@@ -523,6 +584,10 @@ ipcMain.handle('save-settings', async (event, settings) => {
             store.set('openaiApiKey', settings.openaiKey.trim());
         }
 
+        if (settings.deepseekKey) {
+            store.set('deepseekApiKey', settings.deepseekKey.trim());
+        }
+
         if (settings.openaiModel) {
             store.set('openaiModel', settings.openaiModel);
         }
@@ -530,6 +595,10 @@ ipcMain.handle('save-settings', async (event, settings) => {
         // Save reasoning toggle
         store.set('enableReasoning', !!settings.enableReasoning);
         console.log('Reasoning enabled:', !!settings.enableReasoning);
+
+        // Save DeepSeek reasoning toggle
+        store.set('deepseekUseReasoning', !!settings.deepseekUseReasoning);
+        console.log('DeepSeek reasoning enabled:', !!settings.deepseekUseReasoning);
 
         // Close settings window
         if (settingsWindow && !settingsWindow.isDestroyed()) {
@@ -633,12 +702,57 @@ ipcMain.on('save-model-selection', (event, modelId) => {
         console.error('Store not initialized, cannot save model selection');
         return;
     }
-    if (modelId && (modelId === 'o4mini-high' || modelId === '4.1')) {
+    if (modelId && (modelId === '4.1')) {
         console.log('Saving model selection:', modelId);
         store.set('openaiModel', modelId);
     } else {
         console.error('Invalid model ID:', modelId);
     }
+});
+
+// --- IPC Listener: Provider Selection ---
+ipcMain.on('select-provider', (event, provider) => {
+    if (!store) {
+        console.error('Store not initialized, cannot select provider');
+        return;
+    }
+    if (provider && ['openai', 'gemini', 'deepseek'].includes(provider)) {
+        console.log('Selecting provider:', provider);
+        store.set('apiProvider', provider);
+
+        // Send update to renderer to refresh UI
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('provider-changed', provider);
+        }
+    } else {
+        console.error('Invalid provider:', provider);
+    }
+});
+
+// --- IPC Handler: Get Current Provider ---
+ipcMain.handle('get-current-provider', async (event) => {
+    if (!store) {
+        return 'gemini'; // Default
+    }
+    return store.get('apiProvider') || 'gemini';
+});
+
+// --- IPC Listener: Toggle DeepSeek Reasoning ---
+ipcMain.on('toggle-deepseek-reasoning', (event, enabled) => {
+    if (!store) {
+        console.error('Store not initialized, cannot toggle DeepSeek reasoning');
+        return;
+    }
+    console.log('Toggling DeepSeek reasoning to:', enabled);
+    store.set('deepseekUseReasoning', !!enabled);
+});
+
+// --- IPC Handler: Get DeepSeek Reasoning State ---
+ipcMain.handle('get-deepseek-reasoning-state', async (event) => {
+    if (!store) {
+        return false;
+    }
+    return store.get('deepseekUseReasoning') || false;
 });
 
 // --- IPC Handler: Call AI API ---
@@ -649,7 +763,15 @@ ipcMain.handle('call-gemini', async (event, payload) => {
     }
 
     const provider = store.get('apiProvider') || 'gemini';
-    const apiKey = provider === 'gemini' ? store.get('googleApiKey') : store.get('openaiApiKey');
+    let apiKey;
+
+    if (provider === 'gemini') {
+        apiKey = store.get('googleApiKey');
+    } else if (provider === 'deepseek') {
+        apiKey = store.get('deepseekApiKey');
+    } else {
+        apiKey = store.get('openaiApiKey');
+    }
 
     if (!apiKey) {
         return { error: `${provider.toUpperCase()} API key not found. Please set it in settings.` };
@@ -687,6 +809,8 @@ ipcMain.handle('call-gemini', async (event, payload) => {
         // Call the appropriate API based on the provider
         if (provider === 'gemini') {
             return await callGeminiApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot);
+        } else if (provider === 'deepseek') {
+            return await callDeepSeekApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot, requestedModel);
         } else {
             return await callOpenAIApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot, requestedModel);
         }
@@ -897,10 +1021,119 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
     }
 }
 
+// Function to call the DeepSeek API (using OpenAI-compatible format)
+async function callDeepSeekApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot, requestedModel) {
+    // Check if reasoning (R1) is enabled for DeepSeek
+    const useReasoning = store.get('deepseekUseReasoning') || false;
+
+    // Select model based on reasoning setting
+    const model = useReasoning ? 'deepseek-reasoner' : 'deepseek-chat';
+    console.log(`Using DeepSeek model: ${model}, Reasoning: ${useReasoning}`);
+
+    // Create request headers
+    const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+    };
+
+    // Build the content for the user message
+    const userMessageContent = [];
+
+    // Add text if provided
+    if (textInput) {
+        userMessageContent.push({
+            type: "text",
+            text: textInput
+        });
+    }
+
+    // Add custom instructions if provided
+    if (customInstructions) {
+        userMessageContent.push({
+            type: "text",
+            text: `Custom Instructions: ${customInstructions}`
+        });
+    }
+
+    // Add screenshot if available
+    if (hasScreenshot && screenshotData) {
+        userMessageContent.push({
+            type: "image_url",
+            image_url: {
+                url: screenshotData
+            }
+        });
+    }
+
+    // Create messages array
+    const messages = [
+        {
+            role: "system",
+            content: "You are a helpful assistant analyzing user input. Provide concise, accurate responses."
+        },
+        {
+            role: "user",
+            content: userMessageContent
+        }
+    ];
+
+    // Build request body
+    const requestBody = {
+        model: model,
+        messages: messages,
+        temperature: 0.7
+    };
+
+    console.log('Sending API request to DeepSeek:', model);
+
+    try {
+        // Call the DeepSeek API
+        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(requestBody)
+        });
+
+        // Parse the response
+        const responseData = await response.json();
+
+        // Log the response for debugging
+        console.log('DeepSeek API response status:', response.status);
+        console.log('DeepSeek API response data:', JSON.stringify(responseData, null, 2));
+
+        // Check for errors in the response
+        if (!response.ok) {
+            const error = responseData.error || { message: 'Unknown API error' };
+            console.error('DeepSeek API error:', error);
+            return { error: `API Error: ${error.message}` };
+        }
+
+        // Extract the text from the response
+        if (responseData.choices && responseData.choices.length > 0) {
+            const choice = responseData.choices[0];
+            if (choice.message && choice.message.content) {
+                const textContent = choice.message.content;
+                return { success: textContent.trim() };
+            }
+        }
+
+        return { error: 'No valid response from DeepSeek' };
+    } catch (error) {
+        console.error('Error calling DeepSeek API:', error);
+        return { error: `Error: ${error.message}` };
+    }
+}
+
 // Helper function to get API key based on current provider
 function getApiKey() {
     const provider = store.get('apiProvider') || 'gemini';
-    return provider === 'gemini' ? store.get('googleApiKey') : store.get('openaiApiKey');
+    if (provider === 'gemini') {
+        return store.get('googleApiKey');
+    } else if (provider === 'deepseek') {
+        return store.get('deepseekApiKey');
+    } else {
+        return store.get('openaiApiKey');
+    }
 }
 
 // Function to process math notation into HTML-friendly format for display
@@ -912,51 +1145,51 @@ function processMathForDisplay(text) {
 // Legacy function to make mathematical expressions more readable for humans
 function makeReadableMath(text) {
     // This is a more comprehensive makeover of the text that creates a more readable output
-    
+
     // First, remove all escaped backslashes (common in JS strings with LaTeX)
     text = text.replace(/\\\\/g, '\\');
-    
+
     // Format text headers and structure
     text = text.replace(/\*\*([^*]+)\*\*/g, '$1');
-    
+
     // Replace LaTeX math delimiters
     text = text.replace(/\\\(|\\\)/g, '');
     text = text.replace(/\\\[|\\\]/g, '');
     text = text.replace(/\$\$/g, '');
     text = text.replace(/\$/g, '');
-    
+
     // Handle different integral formats
     text = text.replace(/\\int_\{([^}]*)\}\^\{([^}]*)\}/g, 'integral from $1 to $2 of');
     text = text.replace(/\\int_(\S+)\^(\S+)/g, 'integral from $1 to $2 of');
     text = text.replace(/\\int/g, 'integral');
-    
+
     // Handle limits and evaluations
     text = text.replace(/\\left\.(.*?)\\right\|_(\S+)\^(\S+)/g, 'evaluated at $2 to $3');
     text = text.replace(/\\left\.(.*?)\\right\|_\{([^}]*)\}\^\{([^}]*)\}/g, 'evaluated at $2 to $3');
     text = text.replace(/\\big\|_(\S+)\^(\S+)/g, 'evaluated at $1 to $2');
-    
+
     // Handle absolute value
     text = text.replace(/\|([^|]+)\|/g, 'absolute value of $1');
-    
+
     // Replace LaTeX fractions
     text = text.replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, '($1)/($2)');
     text = text.replace(/\\frac(\S)(\S)/g, '$1/$2');
-    
+
     // Replace LaTeX exponents
     text = text.replace(/\^\{([^}]*)\}/g, ' to the power of $1');
     text = text.replace(/e\^\{-([^}]*)\}/g, 'e to the power of -$1');
     text = text.replace(/e\^\{([^}]*)\}/g, 'e to the power of $1');
     text = text.replace(/e\^(-?[\d.]+)/g, 'e to the power of $1');
     text = text.replace(/\^(\S)/g, ' to the power of $1');
-    
+
     // Replace LaTeX subscripts
     text = text.replace(/_\{([^}]*)\}/g, ' subscript $1');
     text = text.replace(/_(\S)/g, ' subscript $1');
-    
+
     // Replace LaTeX square roots
     text = text.replace(/\\sqrt\{([^}]*)\}/g, 'square root of $1');
     text = text.replace(/\\sqrt(\S)/g, 'square root of $1');
-    
+
     // Replace common LaTeX symbols
     text = text.replace(/\\Rightarrow/g, 'therefore');
     text = text.replace(/\\rightarrow/g, 'leads to');
@@ -990,7 +1223,7 @@ function makeReadableMath(text) {
     text = text.replace(/\\subset/g, 'is a subset of');
     text = text.replace(/\\cup/g, 'union');
     text = text.replace(/\\cap/g, 'intersection');
-    
+
     // Replace LaTeX brackets and braces
     text = text.replace(/\\left\(/g, '(');
     text = text.replace(/\\right\)/g, ')');
@@ -1000,33 +1233,33 @@ function makeReadableMath(text) {
     text = text.replace(/\\right\\}/g, '}');
     text = text.replace(/\\{/g, '{');
     text = text.replace(/\\}/g, '}');
-    
+
     // Replace LaTeX equation environments
     text = text.replace(/\\begin\{equation\}(.*?)\\end\{equation\}/gs, '$1');
     text = text.replace(/\\begin\{align\}(.*?)\\end\{align\}/gs, '$1');
     text = text.replace(/\\begin\{aligned\}(.*?)\\end\{aligned\}/gs, '$1');
     text = text.replace(/\\begin\{\S+\}|\\end\{\S+\}/g, '');
-    
+
     // Handle boxed answer and result notation
     text = text.replace(/\\boxed\{([^}]*)\}/g, 'Final Answer: $1');
-    
+
     // Clean up remaining LaTeX commands
     text = text.replace(/\\[a-zA-Z]+/g, '');
-    
+
     // Add appropriate spacing to math expressions for readability
     text = text.replace(/([+\-*/=()\[\]])/g, ' $1 ');
     text = text.replace(/\s+/g, ' ').trim();
-    
+
     // Remove unnecessary double whitespace
     text = text.replace(/\s{2,}/g, ' ');
-    
+
     // Add better formatting for steps in mathematical solutions
     text = text.replace(/Let's solve it step by step:/g, "I'll solve this step by step:");
     text = text.replace(/Using integration by parts:/g, "Here's how we use integration by parts:");
     text = text.replace(/Let \\\( u = ([^)]+)\\\)/g, "First, I'll substitute u = $1.");
     text = text.replace(/Final answer:/g, "Here's our final answer:");
     text = text.replace(/For the first part|First term|Second term|Second part/g, "\n$&:");
-    
+
     return text;
 }
 
@@ -1039,6 +1272,7 @@ ipcMain.on('remove-screenshot', () => {
         resizeWindowForScreenshot(false);
     }
 });
+
 async function getSystemInfo() {
     try {
         // Get detailed OS information
@@ -1260,25 +1494,25 @@ function getHardwareIdentifier() {
 }
 
 // Simple encryption/decryption functions using a fixed key
-function encryptData(text) {
-    try {
-        if (!text) return '';
+// function encryptData(text) {
+//     try {
+//         if (!text) return '';
 
-        const algorithm = 'aes-256-cbc';
-        // Create a deterministic but device-specific key using hardware info
-        const keyBase = `${machineIdSync()}-${os.platform()}-${os.totalmem()}`;
-        const key = crypto.createHash('sha256').update(keyBase).digest().slice(0, 32);
+//         const algorithm = 'aes-256-cbc';
+//         // Create a deterministic but device-specific key using hardware info
+//         const keyBase = `${machineIdSync()}-${os.platform()}-${os.totalmem()}`;
+//         const key = crypto.createHash('sha256').update(keyBase).digest().slice(0, 32);
 
-        const iv = crypto.randomBytes(16);
-        const cipher = crypto.createCipheriv(algorithm, key, iv);
-        let encrypted = cipher.update(text, 'utf8', 'hex');
-        encrypted += cipher.final('hex');
-        return `${iv.toString('hex')}:${encrypted}`;
-    } catch (error) {
-        console.error('Encryption error:', error);
-        return '';
-    }
-}
+//         const iv = crypto.randomBytes(16);
+//         const cipher = crypto.createCipheriv(algorithm, key, iv);
+//         let encrypted = cipher.update(text, 'utf8', 'hex');
+//         encrypted += cipher.final('hex');
+//         return `${iv.toString('hex')}:${encrypted}`;
+//     } catch (error) {
+//         console.error('Encryption error:', error);
+//         return '';
+//     }
+// }
 
 function decryptData(text) {
     try {
@@ -1302,39 +1536,39 @@ function decryptData(text) {
     }
 }
 
-// Add a function to check for tampering with the app itself
-async function verifyAppIntegrity() {
-    try {
-        // In a production app, we would validate:
-        // 1. That the app's code signature is valid
-        // 2. That critical files haven't been modified
-        // 3. That we're not running in a debugging environment
+// // Add a function to check for tampering with the app itself
+// async function verifyAppIntegrity() {
+//     try {
+//         // In a production app, we would validate:
+//         // 1. That the app's code signature is valid
+//         // 2. That critical files haven't been modified
+//         // 3. That we're not running in a debugging environment
 
-        // For now, we'll do some basic checks
-        const isDevToolsOpen = mainWindow &&
-            mainWindow.webContents &&
-            mainWindow.webContents.isDevToolsOpened();
+//         // For now, we'll do some basic checks
+//         const isDevToolsOpen = mainWindow &&
+//             mainWindow.webContents &&
+//             mainWindow.webContents.isDevToolsOpened();
 
-        if (isDevToolsOpen) {
-            console.warn('DevTools are open - potential tampering attempt');
-            // In a real app, we might want to report this to the server
-            return false;
-        }
+//         if (isDevToolsOpen) {
+//             console.warn('DevTools are open - potential tampering attempt');
+//             // In a real app, we might want to report this to the server
+//             return false;
+//         }
 
-        // Check if we're running in development mode
-        const isDev = process.env.NODE_ENV === 'development' ||
-            process.defaultApp ||
-            /[\\/]electron-prebuilt[\\/]/.test(process.execPath) ||
-            /[\\/]electron[\\/]/.test(process.execPath);
+//         // Check if we're running in development mode
+//         const isDev = process.env.NODE_ENV === 'development' ||
+//             process.defaultApp ||
+//             /[\\/]electron-prebuilt[\\/]/.test(process.execPath) ||
+//             /[\\/]electron[\\/]/.test(process.execPath);
 
-        if (isDev) {
-            console.warn('Running in development mode');
-            // Allow in dev mode, but a real app might limit functionality
-        }
+//         if (isDev) {
+//             console.warn('Running in development mode');
+//             // Allow in dev mode, but a real app might limit functionality
+//         }
 
-        return true;
-    } catch (error) {
-        console.error('App integrity check failed:', error);
-        return false;
-    }
-}
+//         return true;
+//     } catch (error) {
+//         console.error('App integrity check failed:', error);
+//         return false;
+//     }
+// }

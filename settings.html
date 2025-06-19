@@ -127,8 +127,9 @@
         /* New styles for provider selection buttons */
         .provider-buttons {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             margin-bottom: 15px;
+            flex-wrap: wrap;
         }
 
         .provider-button {
@@ -164,6 +165,7 @@
             <div class="provider-buttons">
                 <button id="gemini-provider" class="provider-button active">Google Gemini</button>
                 <button id="openai-provider" class="provider-button">OpenAI</button>
+                <button id="deepseek-provider" class="provider-button">DeepSeek</button>
             </div>
             <input type="hidden" id="provider-select" value="gemini">
         </div>
@@ -180,12 +182,18 @@
                 <label for="openai-key">OpenAI API Key:</label>
                 <input type="password" id="openai-key" placeholder="Enter your OpenAI API key">
                 <div class="info-text">Get your API key from OpenAI Platform</div>
+            </div>
 
-                <!-- <label for="openai-model">OpenAI Model:</label>
-                <select id="openai-model">
-                    <option value="o4mini-high">GPT-4 Mini</option>
-                    <option value="o4-2">GPT-4.1</option>
-                </select> -->
+            <div id="deepseek-settings">
+                <label for="deepseek-key">DeepSeek API Key:</label>
+                <input type="password" id="deepseek-key" placeholder="Enter your DeepSeek API key">
+                <div class="info-text">Get your API key from DeepSeek Platform</div>
+
+                <div class="checkbox-container">
+                    <input type="checkbox" id="deepseek-reasoning">
+                    <label for="deepseek-reasoning">Enable R1 Reasoning Model</label>
+                </div>
+                <div class="info-text">R1 model provides enhanced reasoning capabilities but may be slower</div>
             </div>
         </div>
 

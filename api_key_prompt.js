@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const errorMessage = document.getElementById('error-message');
     const geminiRadio = document.getElementById('gemini');
     const openaiRadio = document.getElementById('openai');
+    const deepseekRadio = document.getElementById('deepseek');
     const providerHelp = document.getElementById('provider-help');
     const geminiLink = document.getElementById('gemini-link');
 
@@ -21,9 +22,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Update provider help text when selection changes
     geminiRadio.addEventListener('change', updateHelpText);
     openaiRadio.addEventListener('change', updateHelpText);
+    deepseekRadio.addEventListener('change', updateHelpText);
 
     function updateHelpText() {
-        selectedProvider = geminiRadio.checked ? 'gemini' : 'openai';
+        if (geminiRadio.checked) {
+            selectedProvider = 'gemini';
+        } else if (openaiRadio.checked) {
+            selectedProvider = 'openai';
+        } else if (deepseekRadio.checked) {
+            selectedProvider = 'deepseek';
+        }
 
         if (selectedProvider === 'gemini') {
             providerHelp.innerHTML = 'Google Gemini API keys can be obtained from <a href="#" id="gemini-link">Google AI Studio</a>.';
@@ -32,12 +40,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.preventDefault();
                 window.electronAPI.openExternalLink('https://aistudio.google.com/');
             });
-        } else {
+        } else if (selectedProvider === 'openai') {
             providerHelp.innerHTML = 'OpenAI API keys can be obtained from your <a href="#" id="openai-link">OpenAI account</a>.';
             const openaiLink = document.getElementById('openai-link');
             openaiLink.addEventListener('click', (e) => {
                 e.preventDefault();
                 window.electronAPI.openExternalLink('https://platform.openai.com/account/api-keys');
+            });
+        } else if (selectedProvider === 'deepseek') {
+            providerHelp.innerHTML = 'DeepSeek API keys can be obtained from <a href="#" id="deepseek-link">DeepSeek Platform</a>.';
+            const deepseekLink = document.getElementById('deepseek-link');
+            deepseekLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.electronAPI.openExternalLink('https://platform.deepseek.com/api_keys');
             });
         }
     }
@@ -51,7 +66,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        selectedProvider = geminiRadio.checked ? 'gemini' : 'openai';
+        if (geminiRadio.checked) {
+            selectedProvider = 'gemini';
+        } else if (openaiRadio.checked) {
+            selectedProvider = 'openai';
+        } else if (deepseekRadio.checked) {
+            selectedProvider = 'deepseek';
+        }
 
         try {
             // Save API key through the preload bridge
