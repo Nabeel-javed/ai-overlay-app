@@ -279,6 +279,14 @@ function registerShortcuts() {
         'CommandOrControl+Shift+S': () => captureScreenshot(),
         // --- Reset Tool Shortcut ---
         'CommandOrControl+R': () => resetTool(),
+        // --- Provider Cycling Shortcut ---
+        'CommandOrControl+Shift+P': () => cycleProvider(),
+        // --- Direct Provider Shortcuts ---
+        'CommandOrControl+1': () => switchToProvider('openai'),
+        'CommandOrControl+2': () => switchToProvider('gemini'),
+        'CommandOrControl+3': () => switchToProvider('deepseek'),
+        // --- Toggle DeepSeek Reasoning ---
+        'CommandOrControl+Shift+R': () => toggleDeepSeekReasoning(),
         // --- Opacity Control Shortcuts ---
         'CommandOrControl+[': () => adjustOpacity(-0.05),
         'CommandOrControl+]': () => adjustOpacity(0.05),
@@ -416,6 +424,107 @@ function resetTool() {
 
     // Focus the input after reset
     setTimeout(() => focusWindowAndInput(), 100);
+}
+
+// --- Function to cycle through providers ---
+function cycleProvider() {
+    console.log('Provider cycle shortcut pressed');
+    if (!store) {
+        console.error('Store not initialized, cannot cycle provider');
+        return;
+    }
+
+    const currentProvider = store.get('apiProvider') || 'gemini';
+    const providers = ['openai', 'gemini', 'deepseek'];
+    const currentIndex = providers.indexOf(currentProvider);
+    const nextIndex = (currentIndex + 1) % providers.length;
+    const nextProvider = providers[nextIndex];
+
+    console.log(`Cycling from ${currentProvider} to ${nextProvider}`);
+    store.set('apiProvider', nextProvider);
+
+    // Send update to renderer to refresh UI
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('provider-changed', nextProvider);
+
+        // Also send a notification message to show which provider is now active
+        mainWindow.webContents.send('provider-notification', {
+            provider: nextProvider,
+            message: `Switched to ${nextProvider.charAt(0).toUpperCase() + nextProvider.slice(1)}`
+        });
+    }
+}
+
+// --- Function to switch to specific provider ---
+function switchToProvider(provider) {
+    console.log(`Direct provider switch to: ${provider}`);
+    if (!store) {
+        console.error('Store not initialized, cannot switch provider');
+        return;
+    }
+
+    if (!['openai', 'gemini', 'deepseek'].includes(provider)) {
+        console.error('Invalid provider:', provider);
+        return;
+    }
+
+    const currentProvider = store.get('apiProvider') || 'gemini';
+    if (currentProvider === provider) {
+        console.log(`Already using ${provider}, no change needed`);
+        return;
+    }
+
+    console.log(`Switching from ${currentProvider} to ${provider}`);
+    store.set('apiProvider', provider);
+
+    // Send update to renderer to refresh UI
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('provider-changed', provider);
+
+        // Also send a notification message to show which provider is now active
+        mainWindow.webContents.send('provider-notification', {
+            provider: provider,
+            message: `Switched to ${provider.charAt(0).toUpperCase() + provider.slice(1)}`
+        });
+    }
+}
+
+// --- Function to toggle DeepSeek reasoning mode ---
+function toggleDeepSeekReasoning() {
+    console.log('DeepSeek reasoning toggle shortcut pressed');
+    if (!store) {
+        console.error('Store not initialized, cannot toggle DeepSeek reasoning');
+        return;
+    }
+
+    const currentProvider = store.get('apiProvider') || 'gemini';
+    if (currentProvider !== 'deepseek') {
+        // If not using DeepSeek, show notification and optionally switch
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('provider-notification', {
+                provider: 'deepseek',
+                message: 'Switch to DeepSeek first to toggle R1 reasoning'
+            });
+        }
+        return;
+    }
+
+    const currentState = store.get('deepseekUseReasoning') || false;
+    const newState = !currentState;
+
+    console.log(`Toggling DeepSeek reasoning from ${currentState} to ${newState}`);
+    store.set('deepseekUseReasoning', newState);
+
+    // Send update to renderer to refresh UI
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('deepseek-reasoning-changed', newState);
+
+        // Also send a notification message
+        mainWindow.webContents.send('provider-notification', {
+            provider: 'deepseek',
+            message: `DeepSeek R1 Mode ${newState ? 'Enabled' : 'Disabled'}`
+        });
+    }
 }
 
 // --- App Ready Event ---
@@ -1036,44 +1145,39 @@ async function callDeepSeekApi(apiKey, textInput, customInstructions, screenshot
         'Authorization': `Bearer ${apiKey}`
     };
 
-    // Build the content for the user message
-    const userMessageContent = [];
+    // Build the user message content
+    let userContent = '';
 
     // Add text if provided
     if (textInput) {
-        userMessageContent.push({
-            type: "text",
-            text: textInput
-        });
+        userContent += textInput;
     }
 
     // Add custom instructions if provided
     if (customInstructions) {
-        userMessageContent.push({
-            type: "text",
-            text: `Custom Instructions: ${customInstructions}`
-        });
+        userContent += (userContent ? '\n\n' : '') + `Custom Instructions: ${customInstructions}`;
     }
 
-    // Add screenshot if available
+    // For screenshots, we need to handle them differently - DeepSeek might not support vision yet
     if (hasScreenshot && screenshotData) {
-        userMessageContent.push({
-            type: "image_url",
-            image_url: {
-                url: screenshotData
-            }
-        });
+        userContent += (userContent ? '\n\n' : '') + 'I have attached a screenshot for analysis.';
+        console.log('Note: DeepSeek may not support image analysis. Sending text-only request.');
     }
 
-    // Create messages array
+    // If no content, use a default
+    if (!userContent.trim()) {
+        userContent = 'Hello, please respond.';
+    }
+
+    // Create messages array (simplified for DeepSeek compatibility)
     const messages = [
         {
             role: "system",
-            content: "You are a helpful assistant analyzing user input. Provide concise, accurate responses."
+            content: "You are a helpful assistant. Provide concise, accurate responses."
         },
         {
             role: "user",
-            content: userMessageContent
+            content: userContent
         }
     ];
 
@@ -1094,19 +1198,32 @@ async function callDeepSeekApi(apiKey, textInput, customInstructions, screenshot
             body: JSON.stringify(requestBody)
         });
 
-        // Parse the response
-        const responseData = await response.json();
-
         // Log the response for debugging
         console.log('DeepSeek API response status:', response.status);
-        console.log('DeepSeek API response data:', JSON.stringify(responseData, null, 2));
+        console.log('DeepSeek API response headers:', response.headers.get('content-type'));
 
-        // Check for errors in the response
+        // Check for errors in the response first
         if (!response.ok) {
-            const error = responseData.error || { message: 'Unknown API error' };
-            console.error('DeepSeek API error:', error);
-            return { error: `API Error: ${error.message}` };
+            // Try to get error text
+            const errorText = await response.text();
+            console.error('DeepSeek API error response:', errorText);
+            return { error: `API Error (${response.status}): ${errorText}` };
         }
+
+        // Parse the response
+        const responseText = await response.text();
+        console.log('DeepSeek API raw response:', responseText.substring(0, 200) + '...');
+
+        let responseData;
+        try {
+            responseData = JSON.parse(responseText);
+        } catch (parseError) {
+            console.error('Failed to parse DeepSeek response as JSON:', parseError);
+            console.error('Raw response:', responseText);
+            return { error: `Invalid response format from DeepSeek API` };
+        }
+
+        console.log('DeepSeek API response data:', JSON.stringify(responseData, null, 2));
 
         // Extract the text from the response
         if (responseData.choices && responseData.choices.length > 0) {

@@ -116,13 +116,18 @@ function updateProviderUI(providerId) {
     if (providerId === 'openai') {
         modelSelector.style.display = 'flex';
         deepseekReasoningToggle.style.display = 'none';
+        // Keep the current OpenAI model
     } else if (providerId === 'deepseek') {
         modelSelector.style.display = 'none';
         deepseekReasoningToggle.style.display = 'flex';
+        // Clear model selection for DeepSeek (it uses reasoning toggle instead)
+        currentModel = null;
     } else {
         // Gemini - hide both
         modelSelector.style.display = 'none';
         deepseekReasoningToggle.style.display = 'none';
+        // Clear model selection for Gemini
+        currentModel = null;
     }
 }
 
@@ -278,6 +283,55 @@ window.electronAPI.onProviderChanged((provider) => {
     updateProviderUI(provider);
 });
 
+// --- IPC Listener for provider notifications ---
+window.electronAPI.onProviderNotification((data) => {
+    console.log('Provider notification:', data);
+    showProviderNotification(data.message);
+});
+
+// --- IPC Listener for DeepSeek reasoning changes ---
+window.electronAPI.onDeepSeekReasoningChanged((enabled) => {
+    console.log('DeepSeek reasoning changed to:', enabled);
+    if (deepseekReasoningCheckbox) {
+        deepseekReasoningCheckbox.checked = enabled;
+    }
+});
+
+// Function to show temporary provider notification
+function showProviderNotification(message) {
+    // Create or get existing notification element
+    let notification = document.getElementById('provider-notification');
+
+    if (!notification) {
+        notification = document.createElement('div');
+        notification.id = 'provider-notification';
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: var(--accent-color);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            pointer-events: none;
+        `;
+        document.body.appendChild(notification);
+    }
+
+    notification.textContent = message;
+    notification.style.opacity = '1';
+
+    // Hide after 2 seconds
+    setTimeout(() => {
+        notification.style.opacity = '0';
+    }, 2000);
+}
+
 // Function to handle AI submission
 async function submitToAI() {
     const inputText = inputTextArea.value.trim();
@@ -304,16 +358,18 @@ async function submitToAI() {
                 text: inputText,
                 screenshot: currentScreenshot,
                 instructions: customInstructions,
-                model: currentModel // Pass the selected model
+                // Only pass model for OpenAI, other providers don't need it
+                ...(currentProvider === 'openai' && currentModel ? { model: currentModel } : {})
             };
 
             // Convert to JSON string
             payload = JSON.stringify(screenshotPayload);
         } else {
-            // If it's just text, still pass the model selection
+            // If it's just text, still pass the model selection for OpenAI only
             const textPayload = {
                 text: inputText,
-                model: currentModel
+                // Only pass model for OpenAI, other providers don't need it
+                ...(currentProvider === 'openai' && currentModel ? { model: currentModel } : {})
             };
             payload = JSON.stringify(textPayload);
         }

@@ -76,10 +76,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectProvider: (provider) => ipcRenderer.send('select-provider', provider),
   getCurrentProvider: () => ipcRenderer.invoke('get-current-provider'),
   onProviderChanged: (callback) => ipcRenderer.on('provider-changed', (event, provider) => callback(provider)),
+  onProviderNotification: (callback) => ipcRenderer.on('provider-notification', (event, data) => callback(data)),
 
   // DeepSeek reasoning toggle
   toggleDeepSeekReasoning: (enabled) => ipcRenderer.send('toggle-deepseek-reasoning', enabled),
-  getDeepSeekReasoningState: () => ipcRenderer.invoke('get-deepseek-reasoning-state')
+  getDeepSeekReasoningState: () => ipcRenderer.invoke('get-deepseek-reasoning-state'),
+  onDeepSeekReasoningChanged: (callback) => ipcRenderer.on('deepseek-reasoning-changed', (event, enabled) => callback(enabled))
 });
 
 console.log('Preload script executed');
