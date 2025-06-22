@@ -443,6 +443,51 @@ function updateSubmitButton() {
     submitButton.disabled = !inputTextArea.value.trim() && !currentScreenshot;
 }
 
+// --- Global keyboard shortcuts for scrolling response area ---
+document.addEventListener('keydown', (event) => {
+    // Only handle these shortcuts when not typing in input fields
+    const activeElement = document.activeElement;
+    const isTyping = activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT';
+
+    // Scroll response area shortcuts (Page Up/Down, Arrow keys with modifiers)
+    if (!isTyping) {
+        let scrollAmount = 0;
+        let shouldScroll = false;
+
+        // Page Up/Down for large scrolls
+        if (event.key === 'PageUp' || (event.ctrlKey && event.key === 'ArrowUp')) {
+            scrollAmount = -responseTextArea.clientHeight * 0.8; // Scroll up by 80% of viewport
+            shouldScroll = true;
+        } else if (event.key === 'PageDown' || (event.ctrlKey && event.key === 'ArrowDown')) {
+            scrollAmount = responseTextArea.clientHeight * 0.8; // Scroll down by 80% of viewport
+            shouldScroll = true;
+        }
+        // Arrow keys for smaller scrolls
+        else if (event.altKey && event.key === 'ArrowUp') {
+            scrollAmount = -40; // Small scroll up
+            shouldScroll = true;
+        } else if (event.altKey && event.key === 'ArrowDown') {
+            scrollAmount = 40; // Small scroll down
+            shouldScroll = true;
+        }
+        // Home/End for jumping to top/bottom
+        else if (event.key === 'Home' || (event.ctrlKey && event.key === 'Home')) {
+            responseTextArea.scrollTop = 0;
+            event.preventDefault();
+            return;
+        } else if (event.key === 'End' || (event.ctrlKey && event.key === 'End')) {
+            responseTextArea.scrollTop = responseTextArea.scrollHeight;
+            event.preventDefault();
+            return;
+        }
+
+        if (shouldScroll) {
+            event.preventDefault();
+            responseTextArea.scrollTop += scrollAmount;
+        }
+    }
+});
+
 // --- Initial State ---
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('DOM fully loaded and parsed');
