@@ -40,13 +40,11 @@
     ],
     "mac": {
       "category": "public.app-category.utilities",
-      "icon": "build/icon.icns",
       "target": [
         "dmg"
       ]
     },
     "win": {
-      "icon": "build/icon.ico",
       "target": [
         {
           "target": "nsis",
