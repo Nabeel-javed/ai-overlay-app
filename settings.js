@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Only set values if elements exist
         if (openaiModel) {
-            openaiModel.value = settings.openaiModel || '4.1';
+            openaiModel.value = settings.openaiModel || 'o4-mini';
         }
 
         if (enableReasoning) {
@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             geminiKey: geminiKey.value,
             openaiKey: openaiKey.value,
             deepseekKey: deepseekKey.value,
-            openaiModel: openaiModel ? openaiModel.value : (currentSettings.openaiModel || '4.1'),
+            openaiModel: openaiModel ? openaiModel.value : (currentSettings.openaiModel || 'o4-mini'),
             enableReasoning: enableReasoning ? enableReasoning.checked : (currentSettings.enableReasoning || false),
             deepseekUseReasoning: deepseekReasoning ? deepseekReasoning.checked : (currentSettings.deepseekUseReasoning || false)
         };

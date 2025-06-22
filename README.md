@@ -1,131 +1,237 @@
-# AI Overlay Assistant
+# AI Overlay App
 
-A floating overlay application that provides quick access to AI assistance (Google Gemini and OpenAI) through text input and screenshots, always accessible with keyboard shortcuts.
+A powerful desktop overlay application that provides quick access to multiple AI providers (OpenAI, Google Gemini, and DeepSeek) with screenshot capabilities and extensive keyboard shortcuts for seamless workflow integration.
 
 ## Features
 
-- **Always Accessible**: Overlay window stays on top of other applications
-- **Multiple AI Providers**: Supports both Google Gemini and OpenAI
-- **Screenshot Analysis**: Capture screenshots and have AI analyze them
-- **Custom Instructions**: Add specific instructions for analyzing screenshots
-- **Keyboard Shortcuts**: Control the overlay with hotkeys
-- **Context Menu**: Right-click for additional options
+- **Multi-Provider Support**: OpenAI (o4-mini, GPT-4.1), Google Gemini, and DeepSeek (with R1 reasoning)
+- **Screenshot Integration**: Capture and analyze screenshots with AI
+- **Always-on-Top Overlay**: Stays visible during screen sharing and presentations
+- **Extensive Keyboard Shortcuts**: Control everything without touching the mouse
+- **Screen Sharing Safe**: Provider selection hidden from screen capture
+- **LaTeX Math Rendering**: Automatic mathematical expression rendering
+- **Customizable Opacity**: Adjust window transparency
+- **Cross-Platform**: Available for macOS and Windows
 
-## Hotkeys
-
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl+Shift+O` (Mac: `Cmd+Shift+O`) | Focus the AI overlay and input field |
-| `Ctrl+Shift+H` (Mac: `Cmd+Shift+H`) | Toggle visibility of the overlay |
-| `Ctrl+Shift+S` (Mac: `Cmd+Shift+S`) | Capture screenshot for AI analysis |
-| `Ctrl+R` (Mac: `Cmd+R`) | Reset the tool (clear all inputs) |
-| `Ctrl+Alt+Up/Down/Left/Right` (Mac: `Cmd+Alt+Up/Down/Left/Right`) | Move the overlay window |
-
-## Setup and Installation
+## Installation
 
 ### Prerequisites
-- Node.js (14.0.0 or higher)
-- npm or yarn
+- Node.js 16 or higher
+- npm or yarn package manager
 
-### Installation
-
-1. Clone the repository
-   ```
-   git clone https://github.com/yourusername/ai-overlay-app.git
-   cd ai-overlay-app
-   ```
-
-2. Install dependencies
-   ```
-   npm install
-   ```
-
-3. Start the application
-   ```
-   npm start
-   ```
-
-### Building for Production
-
-To create distributable packages for your platform:
-
-```
-npm run dist
+### From Source
+```bash
+git clone https://github.com/yourusername/ai-overlay-app.git
+cd ai-overlay-app
+npm install
+npm start
 ```
 
-For specific platforms:
-```
-npm run dist:mac
-npm run dist:win
-```
+### Pre-built Releases
+Download the latest release for your platform:
+- **macOS**: Download the `.dmg` file
+- **Windows**: Download the `.exe` file
 
-## API Key Configuration
+## Setup
 
-On first launch, you'll be prompted to enter an API key. You can choose between:
+1. **First Launch**: The app will prompt you to enter your API key
+2. **API Keys**: You can set up keys for multiple providers:
+   - OpenAI API Key
+   - Google Gemini API Key  
+   - DeepSeek API Key
+3. **Provider Selection**: Choose your preferred AI provider from the main interface
 
-1. **Google Gemini**: Get your API key from [Google AI Studio](https://ai.google.dev/)
-2. **OpenAI**: Get your API key from [OpenAI Platform](https://platform.openai.com/api-keys)
+## Keyboard Shortcuts
 
-You can change the API provider or keys later through the settings menu.
+### Universal Shortcuts (macOS / Windows)
 
-## Usage
+| Action | macOS | Windows/Linux |
+|--------|--------|---------------|
+| **Show/Focus App** | `Cmd+Shift+O` | `Ctrl+Shift+O` |
+| **Hide/Show Toggle** | `Cmd+Shift+H` | `Ctrl+Shift+H` |
+| **Take Screenshot** | `Cmd+Shift+S` | `Ctrl+Shift+S` |
+| **Reset Tool** | `Cmd+R` | `Ctrl+R` |
+
+### Provider Management
+
+| Action | macOS | Windows/Linux |
+|--------|--------|---------------|
+| **Switch to OpenAI** | `Cmd+1` | `Ctrl+1` |
+| **Switch to Gemini** | `Cmd+2` | `Ctrl+2` |
+| **Switch to DeepSeek** | `Cmd+3` | `Ctrl+3` |
+| **Cycle Providers** | `Cmd+Shift+P` | `Ctrl+Shift+P` |
+
+### Model & Feature Controls
+
+| Action | macOS | Windows/Linux |
+|--------|--------|---------------|
+| **Toggle DeepSeek R1 Reasoning** | `Cmd+Shift+R` | `Ctrl+Shift+R` |
+| **Cycle OpenAI Models** | `Cmd+Shift+M` | `Ctrl+Shift+M` |
+
+### Window Controls
+
+| Action | macOS | Windows/Linux |
+|--------|--------|---------------|
+| **Move Window Up** | `Cmd+Alt+↑` | `Ctrl+Alt+↑` |
+| **Move Window Down** | `Cmd+Alt+↓` | `Ctrl+Alt+↓` |
+| **Move Window Left** | `Cmd+Alt+←` | `Ctrl+Alt+←` |
+| **Move Window Right** | `Cmd+Alt+→` | `Ctrl+Alt+→` |
+| **Decrease Opacity** | `Cmd+[` | `Ctrl+[` |
+| **Increase Opacity** | `Cmd+]` | `Ctrl+]` |
 
 ### Text Input
 
-1. Press `Ctrl+Shift+O` to bring up the overlay
-2. Type your question or paste text
-3. Click "Submit to AI" or press Enter
+| Action | macOS | Windows/Linux |
+|--------|--------|---------------|
+| **Submit Query** | `Cmd+Enter` | `Ctrl+Enter` |
 
-### Screenshot Analysis
+### Response Navigation
 
-1. Press `Ctrl+Shift+S` to capture a screenshot
-2. Add any custom instructions for analyzing the image
-3. Click "Submit to AI"
+| Action | Key Combination |
+|--------|----------------|
+| **Scroll Up (Large)** | `Page Up` or `Ctrl+↑` |
+| **Scroll Down (Large)** | `Page Down` or `Ctrl+↓` |
+| **Scroll Up (Small)** | `Alt+↑` |
+| **Scroll Down (Small)** | `Alt+↓` |
+| **Jump to Top** | `Home` or `Ctrl+Home` |
+| **Jump to Bottom** | `End` or `Ctrl+End` |
 
-### Settings
+## AI Providers
 
-Access settings through:
-- Clicking the gear icon (⚙️) in the main window
-- Right-clicking in the app and selecting "Settings"
+### OpenAI
+- **Models**: o4-mini, GPT-4.1
+- **Features**: Text and image analysis, reasoning capabilities
+- **Temperature**: Automatically set to 1.0 for o4-mini, 0.7 for GPT-4.1
+- **Cycling**: Use `Cmd/Ctrl+Shift+M` to switch between models
 
-In settings, you can:
-- Switch between Gemini and OpenAI
-- Update API keys
-- Save your preferences
+### Google Gemini
+- **Model**: Gemini 1.5 Pro
+- **Features**: Text and image analysis, multimodal capabilities
+- **Temperature**: 0.7
 
-### Resetting
+### DeepSeek
+- **Models**: deepseek-chat, deepseek-reasoner (R1)
+- **Features**: Advanced reasoning with R1 mode
+- **Temperature**: 0.7
+- **R1 Reasoning**: Toggle with `Cmd/Ctrl+Shift+R`
 
-To clear all inputs and start fresh:
-- Press `Ctrl+R`
-- Right-click in the app and select "Reset"
+## Usage Tips
 
-## Technical Details
+1. **Screen Sharing**: Provider buttons are positioned to avoid screen capture detection
+2. **Screenshot Analysis**: Take a screenshot first, then add text instructions for context
+3. **Custom Instructions**: Use the instructions field for consistent prompting
+4. **Keyboard-First**: Most actions can be performed without mouse interaction
+5. **Opacity Control**: Adjust transparency to see through the overlay when needed
 
-### Architecture
+## Configuration
 
-This application is built with:
-- **Electron**: For cross-platform desktop functionality
-- **Node.js**: For backend operations
-- **HTML/CSS/JavaScript**: For the user interface
-- **Electron Store**: For secure local storage of API keys
+### Settings Access
+- Click the gear icon in the main interface
+- Or right-click anywhere in the app and select "Settings"
 
-### APIs
-
-- **Google Gemini API**: Uses the Generative Language API (particularly gemini-1.5-pro)
-- **OpenAI API**: Uses GPT-4o for advanced text and image understanding
-
-## Privacy and Security
-
-- API keys are stored locally in your user folder
-- The application does not collect or transmit any user data
-- Screenshots are processed locally and only sent directly to the selected AI provider
-
-
+### Available Settings
+- API keys for all providers
+- Default provider selection
+- OpenAI model preference
+- DeepSeek R1 reasoning toggle
+- Enable reasoning for OpenAI models
 
 ## Troubleshooting
 
 ### Common Issues
 
-- **API Key Issues**: If you encounter errors, verify your API key is correct and has appropriate access permissions
-- **Window Visibility**: If the window disappears, use Ctrl+Shift+O to bring it back
-- **Screenshot Failures**: Make sure your system allows screen recording for this application 
+**App won't start**
+- Ensure Node.js 16+ is installed
+- Try deleting `node_modules` and running `npm install` again
+
+**API errors**
+- Verify your API keys are correct
+- Check your internet connection
+- Ensure your API provider account has sufficient credits
+
+**Screenshot not working**
+- Grant screen recording permissions on macOS
+- Ensure the app has necessary permissions on Windows
+
+**Shortcuts not working**
+- Check if other apps are using the same shortcuts
+- Try restarting the application
+
+### Permissions
+
+**macOS**
+- Screen Recording: Required for screenshot functionality
+- Accessibility: May be required for global shortcuts
+
+**Windows**
+- Administrator privileges may be required for global shortcuts
+
+## Development
+
+### Building from Source
+```bash
+# Install dependencies
+npm install
+
+# Run in development mode
+npm start
+
+# Build for production
+npm run build
+
+# Create distributable packages
+npm run dist
+```
+
+### Project Structure
+```
+ai-overlay-app/
+├── main.js              # Main Electron process
+├── renderer.js          # Renderer process logic
+├── preload.js          # Preload scripts
+├── index.html          # Main UI
+├── settings.html       # Settings interface
+├── style.css           # Application styles
+├── package.json        # Dependencies and scripts
+└── README.md          # This file
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Changelog
+
+### v1.2.0
+- Added DeepSeek R1 reasoning support
+- Implemented OpenAI model cycling
+- Added comprehensive keyboard shortcuts
+- Improved provider switching interface
+- Enhanced screenshot analysis capabilities
+
+### v1.1.0
+- Added multi-provider support (OpenAI, Gemini, DeepSeek)
+- Implemented provider-specific keyboard shortcuts
+- Added screen sharing safe interface
+
+### v1.0.0
+- Initial release
+- Basic AI overlay functionality
+- Screenshot integration
+- Google Gemini support
+
+## Support
+
+For support, please open an issue on GitHub or contact the development team.
+
+---
+
+**Note**: This application requires valid API keys from the respective AI providers. Ensure you have appropriate usage limits and billing set up with your chosen providers. 

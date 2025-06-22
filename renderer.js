@@ -32,7 +32,7 @@ const deepseekReasoningCheckbox = document.getElementById('enable-reasoning-deep
 // Variable to store the current screenshot data URL
 let currentScreenshot = null;
 // Variable to store the current selected model
-let currentModel = '4.1'; // Default to GPT-4.1
+let currentModel = 'o4-mini'; // Default to o4-mini
 // Variable to store the current provider
 let currentProvider = 'gemini'; // Default to Gemini
 
@@ -141,7 +141,7 @@ function updateModelUI(modelId) {
         }
     });
 
-    // If the new model is GPT-4.1, disable reasoning checkbox (it only works with GPT-4 Mini)
+    // If the new model is GPT-4.1, disable reasoning checkbox (it only works with o4-mini)
     if (modelId === '4.1' && reasoningCheckbox) {
         reasoningCheckbox.checked = false;
         reasoningCheckbox.disabled = true;
@@ -295,6 +295,13 @@ window.electronAPI.onDeepSeekReasoningChanged((enabled) => {
     if (deepseekReasoningCheckbox) {
         deepseekReasoningCheckbox.checked = enabled;
     }
+});
+
+// --- IPC Listener for OpenAI model changes ---
+window.electronAPI.onOpenAIModelChanged((model) => {
+    console.log('OpenAI model changed to:', model);
+    currentModel = model;
+    updateModelUI(model);
 });
 
 // Function to show temporary provider notification
@@ -506,7 +513,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             reasoningCheckbox.checked = initialState;
             // We don't update the label text now with On/Off
 
-            // If the current model is 4.1, disable reasoning (it only works with GPT-4 Mini)
+            // If the current model is 4.1, disable reasoning (it only works with o4-mini)
             if (currentModel === '4.1') {
                 reasoningCheckbox.disabled = true;
                 reasoningLabel.classList.add('disabled');

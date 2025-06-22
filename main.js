@@ -23,6 +23,10 @@ const MODEL_CONFIG = {
         modelName: "gpt-4.1",
         baseUrl: "https://api.openai.com/v1/responses"
     },
+    "o4-mini": {
+        modelName: "o4-mini-2025-04-16",
+        baseUrl: "https://api.openai.com/v1/chat/completions"
+    },
     "deepseek-chat": {
         modelName: "deepseek-chat",
         baseUrl: "https://api.deepseek.com/v1/chat/completions"
@@ -40,6 +44,10 @@ const PROVIDER_CONFIG = {
         models: {
             "4.1": {
                 modelName: "gpt-4.1",
+                baseUrl: "https://api.openai.com/v1/chat/completions"
+            },
+            "o4-mini": {
+                modelName: "o4-mini-2025-04-16",
                 baseUrl: "https://api.openai.com/v1/chat/completions"
             }
         }
@@ -155,20 +163,27 @@ function createMainWindow() {
         mainWindow.close();
     }
 
+    // Windows-specific configuration
+    const isWindows = process.platform === 'win32';
+
     mainWindow = new BrowserWindow({
         width: 480,
         height: 400,
         frame: false,         // No window frame
-        transparent: true,    // Allow window transparency
+        transparent: !isWindows,    // Disable transparency on Windows for better visibility
         alwaysOnTop: true,    // Keep window on top
         skipTaskbar: true,    // Don't show in taskbar/dock
         resizable: false,
+        backgroundColor: isWindows ? '#2d2d2d' : undefined, // Solid background for Windows
+        opacity: isWindows ? 0.95 : 1.0, // Slight transparency for Windows
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'), // Main window preload
             contextIsolation: true,
             nodeIntegration: false
         },
-        show: false // Don't show immediately
+        show: false, // Don't show immediately
+        x: 100, // Explicit positioning
+        y: 100
     });
 
     // Attempt to prevent screen capture
@@ -208,6 +223,14 @@ function createMainWindow() {
     // Show gracefully when the UI is ready
     mainWindow.once('ready-to-show', () => {
         mainWindow.show();
+        mainWindow.center(); // Center on screen
+
+        // Windows-specific fixes
+        if (process.platform === 'win32') {
+            mainWindow.setAlwaysOnTop(false);
+            mainWindow.setAlwaysOnTop(true);
+            mainWindow.moveTop();
+        }
     });
 
     // Cleanup reference on close
@@ -250,24 +273,44 @@ function registerShortcuts() {
             if (!mainWindow || mainWindow.isDestroyed()) {
                 console.log("Main window doesn't exist or is destroyed.");
                 // If key exists, maybe try creating main window again?
-                if (store.get('googleApiKey')) {
+                if (getApiKey()) {
                     createMainWindow();
                     setTimeout(() => focusWindowAndInput(), 150);
                 }
                 return;
             }
-            if (!mainWindow.isVisible()) mainWindow.show();
+            if (!mainWindow.isVisible()) {
+                mainWindow.show();
+                mainWindow.center(); // Center the window
+                // Windows-specific visibility fix
+                if (process.platform === 'win32') {
+                    mainWindow.setAlwaysOnTop(false);
+                    mainWindow.setAlwaysOnTop(true);
+                    mainWindow.setOpacity(0.95);
+                }
+            }
             focusWindowAndInput();
         },
         // --- Toggle Visibility Shortcut ---
         'CommandOrControl+Shift+H': () => {
             console.log('Toggle visibility shortcut pressed');
             if (!mainWindow || mainWindow.isDestroyed()) return;
-            if (mainWindow.isVisible()) mainWindow.hide();
-            else {
+            if (mainWindow.isVisible()) {
+                mainWindow.hide();
+            } else {
                 mainWindow.show();
-                mainWindow.setOpacity(1.0);
                 mainWindow.focus();
+                mainWindow.center(); // Center the window on screen
+                if (process.platform === 'win32') {
+                    mainWindow.setOpacity(0.95);
+                } else {
+                    mainWindow.setOpacity(1.0);
+                }
+                // Force bring to front on Windows
+                if (process.platform === 'win32') {
+                    mainWindow.setAlwaysOnTop(false);
+                    mainWindow.setAlwaysOnTop(true);
+                }
             }
         },
         // --- Movement Shortcuts ---
@@ -287,6 +330,8 @@ function registerShortcuts() {
         'CommandOrControl+3': () => switchToProvider('deepseek'),
         // --- Toggle DeepSeek Reasoning ---
         'CommandOrControl+Shift+R': () => toggleDeepSeekReasoning(),
+        // --- Cycle OpenAI Models ---
+        'CommandOrControl+Shift+M': () => cycleOpenAIModel(),
         // --- Opacity Control Shortcuts ---
         'CommandOrControl+[': () => adjustOpacity(-0.05),
         'CommandOrControl+]': () => adjustOpacity(0.05),
@@ -307,9 +352,24 @@ function focusWindowAndInput() {
     }
     try {
         console.log("Focusing window and input...");
-        mainWindow.setOpacity(1.0);
+
+        // Platform-specific opacity handling
+        if (process.platform === 'win32') {
+            mainWindow.setOpacity(0.95);
+        } else {
+            mainWindow.setOpacity(1.0);
+        }
+
         mainWindow.focus();
         mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true }); // Reaffirm
+
+        // Windows-specific focus fix
+        if (process.platform === 'win32') {
+            mainWindow.setAlwaysOnTop(false);
+            mainWindow.setAlwaysOnTop(true);
+            mainWindow.moveTop();
+        }
+
         if (mainWindow.webContents) {
             // Instead of always focusing the main input, check if there's a screenshot
             // and focus the custom instructions textarea if so
@@ -527,6 +587,51 @@ function toggleDeepSeekReasoning() {
     }
 }
 
+// --- Function to cycle between OpenAI models ---
+function cycleOpenAIModel() {
+    console.log('OpenAI model cycling shortcut pressed');
+    if (!store) {
+        console.error('Store not initialized, cannot cycle OpenAI model');
+        return;
+    }
+
+    const currentProvider = store.get('apiProvider') || 'gemini';
+    if (currentProvider !== 'openai') {
+        // If not using OpenAI, show notification and optionally switch
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('provider-notification', {
+                provider: 'openai',
+                message: 'Switch to OpenAI first to cycle models'
+            });
+        }
+        return;
+    }
+
+    // Available OpenAI models
+    const openaiModels = ['o4-mini', '4.1'];
+    const currentModel = store.get('openaiModel') || 'o4-mini';
+
+    // Find current model index and get next model
+    const currentIndex = openaiModels.indexOf(currentModel);
+    const nextIndex = (currentIndex + 1) % openaiModels.length;
+    const nextModel = openaiModels[nextIndex];
+
+    console.log(`Cycling OpenAI model from ${currentModel} to ${nextModel}`);
+    store.set('openaiModel', nextModel);
+
+    // Send update to renderer to refresh UI
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('openai-model-changed', nextModel);
+
+        // Also send a notification message
+        const modelDisplayName = nextModel === 'o4-mini' ? 'o4-mini' : 'GPT-4.1';
+        mainWindow.webContents.send('provider-notification', {
+            provider: 'openai',
+            message: `OpenAI Model: ${modelDisplayName}`
+        });
+    }
+}
+
 // --- App Ready Event ---
 app.whenReady().then(async () => {
     if (process.platform === 'darwin') {
@@ -666,7 +771,7 @@ ipcMain.handle('get-settings', async (event) => {
         geminiKey: store.get('googleApiKey') || '',
         openaiKey: store.get('openaiApiKey') || '',
         deepseekKey: store.get('deepseekApiKey') || '',
-        openaiModel: store.get('openaiModel') || '4.1',
+        openaiModel: store.get('openaiModel') || 'o4-mini',
         enableReasoning: store.get('enableReasoning') || false,
         deepseekUseReasoning: store.get('deepseekUseReasoning') || false
     };
@@ -1009,15 +1114,15 @@ async function callGeminiApi(apiKey, textInput, customInstructions, screenshotDa
 async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot, requestedModel) {
     // Determine the correct model config based on settings and screenshot status
     // Use the requested model if provided, otherwise fall back to stored model
-    const storedModel = store.get('openaiModel') || 'o4mini-high';
+    const storedModel = store.get('openaiModel') || 'o4-mini';
     const selectedModel = requestedModel || storedModel;
     const modelConfig = MODEL_CONFIG[selectedModel];
     const apiUrl = modelConfig.baseUrl;
 
     console.log(`Using OpenAI model: ${modelConfig.modelName}`);
 
-    // Check if reasoning is enabled - only applicable for o4mini-high model
-    const enableReasoning = (selectedModel === 'o4mini-high') && (store.get('enableReasoning') || false);
+    // Check if reasoning is enabled - only applicable for o4-mini model
+    const enableReasoning = (selectedModel === 'o4-mini') && (store.get('enableReasoning') || false);
     console.log(`Reasoning enabled: ${enableReasoning}`);
 
     // Create request headers
@@ -1070,20 +1175,75 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
         }
     ];
 
-    // Build the new request body format for Responses API
-    const requestBody = {
-        model: modelConfig.modelName,
-        instructions: systemInstructions, // Use the top-level instructions parameter
-        input: inputMessages, // Use the message array structure
-        // temperature: 0.7
-    };
+    // Build request body - use different format based on model
+    let requestBody;
 
-    // Add reasoning only for o4-mini model (not for 4.1) if enabled
-    if (selectedModel === 'o4mini-high' && enableReasoning) {
-        console.log('Adding reasoning to request for o4-mini');
-        requestBody.reasoning = {
-            effort: "high"
+    if (selectedModel === '4.1') {
+        // Use Responses API format for GPT-4.1
+        requestBody = {
+            model: modelConfig.modelName,
+            instructions: systemInstructions,
+            input: inputMessages
         };
+    } else {
+        // Use standard Chat Completions format for o4-mini and other models
+        const messages = [
+            {
+                role: "system",
+                content: systemInstructions
+            }
+        ];
+
+        // Convert input messages to standard format
+        for (const inputMsg of inputMessages) {
+            if (inputMsg.role === "user") {
+                const userMessage = {
+                    role: "user",
+                    content: []
+                };
+
+                for (const contentItem of inputMsg.content) {
+                    if (contentItem.type === "input_text") {
+                        userMessage.content.push({
+                            type: "text",
+                            text: contentItem.text
+                        });
+                    } else if (contentItem.type === "input_image") {
+                        userMessage.content.push({
+                            type: "image_url",
+                            image_url: {
+                                url: contentItem.image_url
+                            }
+                        });
+                    }
+                }
+
+                messages.push(userMessage);
+            }
+        }
+
+        // Set temperature based on model - o4-mini only supports temperature 1
+        const temperature = (selectedModel === 'o4-mini') ? 1 : 0.7;
+
+        requestBody = {
+            model: modelConfig.modelName,
+            messages: messages,
+            temperature: temperature
+        };
+    }
+
+    // Add reasoning only for o4-mini model if enabled
+    if (selectedModel === 'o4-mini' && enableReasoning) {
+        console.log('Adding reasoning to request for o4-mini');
+        if (selectedModel === '4.1') {
+            requestBody.reasoning = {
+                effort: "high"
+            };
+        } else {
+            // For standard chat completions, reasoning might be handled differently
+            // This depends on OpenAI's implementation for the o4-mini model
+            requestBody.reasoning = true;
+        }
     }
 
     console.log('Sending API request to OpenAI:', modelConfig.modelName);
@@ -1109,22 +1269,35 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
         return { error: `API Error: ${error.message}` };
     }
 
-    // Extract the text from the new response format
-    if (responseData.output && responseData.output.length > 0) {
-        for (const item of responseData.output) {
-            if (item.type === 'message' &&
-                item.content &&
-                item.content.length > 0) {
-                for (const contentItem of item.content) {
-                    if (contentItem.type === 'output_text') {
-                        const textContent = contentItem.text;
-                        // Send raw response with LaTeX intact for proper rendering
-                        return { success: textContent.trim() };
+    // Extract the text from response - handle different formats
+    if (selectedModel === '4.1' && responseData.output) {
+        // Handle Responses API format for GPT-4.1
+        if (responseData.output.length > 0) {
+            for (const item of responseData.output) {
+                if (item.type === 'message' &&
+                    item.content &&
+                    item.content.length > 0) {
+                    for (const contentItem of item.content) {
+                        if (contentItem.type === 'output_text') {
+                            const textContent = contentItem.text;
+                            return { success: textContent.trim() };
+                        }
                     }
                 }
             }
+            return { error: 'Could not find text in the response' };
+        } else {
+            return { error: 'No valid response from OpenAI' };
         }
-        return { error: 'Could not find text in the response' };
+    } else if (responseData.choices && responseData.choices.length > 0) {
+        // Handle standard Chat Completions format for o4-mini and other models
+        const choice = responseData.choices[0];
+        if (choice.message && choice.message.content) {
+            const textContent = choice.message.content;
+            return { success: textContent.trim() };
+        } else {
+            return { error: 'No content in the response message' };
+        }
     } else {
         return { error: 'No valid response from OpenAI' };
     }

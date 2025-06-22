@@ -81,7 +81,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // DeepSeek reasoning toggle
   toggleDeepSeekReasoning: (enabled) => ipcRenderer.send('toggle-deepseek-reasoning', enabled),
   getDeepSeekReasoningState: () => ipcRenderer.invoke('get-deepseek-reasoning-state'),
-  onDeepSeekReasoningChanged: (callback) => ipcRenderer.on('deepseek-reasoning-changed', (event, enabled) => callback(enabled))
+  onDeepSeekReasoningChanged: (callback) => ipcRenderer.on('deepseek-reasoning-changed', (event, enabled) => callback(enabled)),
+  onOpenAIModelChanged: (callback) => ipcRenderer.on('openai-model-changed', (event, model) => callback(model))
 });
 
 console.log('Preload script executed');
