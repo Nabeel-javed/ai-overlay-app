@@ -1,4 +1,4 @@
-# AI Overlay App
+# Spectro
 
 A powerful desktop overlay application that provides quick access to multiple AI providers (OpenAI, Google Gemini, and DeepSeek) with screenshot capabilities and extensive keyboard shortcuts for seamless workflow integration.
 
@@ -21,8 +21,8 @@ A powerful desktop overlay application that provides quick access to multiple AI
 
 ### From Source
 ```bash
-git clone https://github.com/yourusername/ai-overlay-app.git
-cd ai-overlay-app
+git clone https://github.com/Nabeel-Javaid/spectro.git
+cd spectro
 npm install
 npm start
 ```
@@ -185,7 +185,7 @@ npm run dist
 
 ### Project Structure
 ```
-ai-overlay-app/
+spectro/
 ├── main.js              # Main Electron process
 ├── renderer.js          # Renderer process logic
 ├── preload.js          # Preload scripts
@@ -210,12 +210,14 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Changelog
 
-### v1.2.0
+### v1.2.0 - Spectro Rebranding
+- Rebranded to "Spectro" for better market positioning
 - Added DeepSeek R1 reasoning support
-- Implemented OpenAI model cycling
-- Added comprehensive keyboard shortcuts
+- Implemented OpenAI model cycling with Ctrl+Shift+M
+- Added comprehensive keyboard shortcuts for Mac/Windows
 - Improved provider switching interface
 - Enhanced screenshot analysis capabilities
+- Automatic temperature adjustment for o4-mini (1.0)
 
 ### v1.1.0
 - Added multi-provider support (OpenAI, Gemini, DeepSeek)
@@ -223,7 +225,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Added screen sharing safe interface
 
 ### v1.0.0
-- Initial release
+- Initial release as AI Overlay App
 - Basic AI overlay functionality
 - Screenshot integration
 - Google Gemini support

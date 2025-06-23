@@ -1,7 +1,7 @@
 {
-  "name": "ai-overlay-app",
+  "name": "spectro",
   "version": "1.2.0",
-  "description": "AI Overlay App - Multi-provider AI assistant with screenshot analysis",
+  "description": "Spectro - Multi-provider AI assistant with screenshot analysis",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -22,8 +22,8 @@
     "node-machine-id": "^1.1.12"
   },
   "build": {
-    "appId": "com.yourapp.ai-overlay-app",
-    "productName": "AI Overlay App",
+    "appId": "com.yourapp.spectro",
+    "productName": "Spectro",
     "files": [
       "main.js",
       "preload.js",
