@@ -9,7 +9,7 @@ A powerful desktop overlay application that provides quick access to multiple AI
 - **Always-on-Top Overlay**: Stays visible during screen sharing and presentations
 - **Extensive Keyboard Shortcuts**: Control everything without touching the mouse
 - **Screen Sharing Safe**: Provider selection hidden from screen capture
-- **LaTeX Math Rendering**: Automatic mathematical expression rendering
+- **Enhanced Math Rendering**: Automatic LaTeX formatting with improved o4-mini Unicode symbol conversion
 - **Customizable Opacity**: Adjust window transparency
 - **Cross-Platform**: Available for macOS and Windows
 
@@ -102,6 +102,7 @@ Download the latest release for your platform:
 - **Models**: o4-mini, GPT-4.1
 - **Features**: Text and image analysis, reasoning capabilities
 - **Temperature**: Automatically set to 1.0 for o4-mini, 0.7 for GPT-4.1
+- **Math Rendering**: Enhanced Unicode-to-LaTeX conversion for o4-mini mathematical expressions
 - **Cycling**: Use `Cmd/Ctrl+Shift+M` to switch between models
 
 ### Google Gemini
@@ -122,6 +123,7 @@ Download the latest release for your platform:
 3. **Custom Instructions**: Use the instructions field for consistent prompting
 4. **Keyboard-First**: Most actions can be performed without mouse interaction
 5. **Opacity Control**: Adjust transparency to see through the overlay when needed
+6. **Math Rendering**: o4-mini automatically converts Unicode symbols (∫, π, ², ₀) to proper LaTeX for beautiful mathematical display
 
 ## Configuration
 
@@ -218,6 +220,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Improved provider switching interface
 - Enhanced screenshot analysis capabilities
 - Automatic temperature adjustment for o4-mini (1.0)
+- Enhanced mathematical notation rendering for o4-mini (Unicode to LaTeX conversion)
 
 ### v1.1.0
 - Added multi-provider support (OpenAI, Gemini, DeepSeek)
