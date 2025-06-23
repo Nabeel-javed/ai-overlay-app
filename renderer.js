@@ -304,6 +304,82 @@ window.electronAPI.onOpenAIModelChanged((model) => {
     updateModelUI(model);
 });
 
+// Function to enhance mathematical notation for better LaTeX rendering
+function enhanceMathNotation(text) {
+    // Convert common Unicode math symbols to LaTeX equivalents
+    let enhanced = text;
+
+    // Greek letters
+    enhanced = enhanced.replace(/π/g, '$\\pi$');
+    enhanced = enhanced.replace(/α/g, '$\\alpha$');
+    enhanced = enhanced.replace(/β/g, '$\\beta$');
+    enhanced = enhanced.replace(/γ/g, '$\\gamma$');
+    enhanced = enhanced.replace(/δ/g, '$\\delta$');
+    enhanced = enhanced.replace(/ε/g, '$\\epsilon$');
+    enhanced = enhanced.replace(/θ/g, '$\\theta$');
+    enhanced = enhanced.replace(/λ/g, '$\\lambda$');
+    enhanced = enhanced.replace(/μ/g, '$\\mu$');
+    enhanced = enhanced.replace(/σ/g, '$\\sigma$');
+    enhanced = enhanced.replace(/φ/g, '$\\phi$');
+    enhanced = enhanced.replace(/ψ/g, '$\\psi$');
+    enhanced = enhanced.replace(/ω/g, '$\\omega$');
+
+    // Integral symbols
+    enhanced = enhanced.replace(/∫/g, '$\\int$');
+    enhanced = enhanced.replace(/∮/g, '$\\oint$');
+
+    // Summation and product symbols
+    enhanced = enhanced.replace(/∑/g, '$\\sum$');
+    enhanced = enhanced.replace(/∏/g, '$\\prod$');
+
+    // Other mathematical symbols
+    enhanced = enhanced.replace(/∞/g, '$\\infty$');
+    enhanced = enhanced.replace(/√/g, '$\\sqrt{}$');
+    enhanced = enhanced.replace(/≤/g, '$\\leq$');
+    enhanced = enhanced.replace(/≥/g, '$\\geq$');
+    enhanced = enhanced.replace(/≠/g, '$\\neq$');
+    enhanced = enhanced.replace(/≈/g, '$\\approx$');
+    enhanced = enhanced.replace(/±/g, '$\\pm$');
+    enhanced = enhanced.replace(/∂/g, '$\\partial$');
+    enhanced = enhanced.replace(/→/g, '$\\rightarrow$');
+    enhanced = enhanced.replace(/⇒/g, '$\\Rightarrow$');
+
+    // Fix subscripts and superscripts patterns
+    // Handle patterns like x₀, x₁, etc.
+    enhanced = enhanced.replace(/([a-zA-Z])₀/g, '$1_0$');
+    enhanced = enhanced.replace(/([a-zA-Z])₁/g, '$1_1$');
+    enhanced = enhanced.replace(/([a-zA-Z])₂/g, '$1_2$');
+    enhanced = enhanced.replace(/([a-zA-Z])₃/g, '$1_3$');
+    enhanced = enhanced.replace(/([a-zA-Z])₄/g, '$1_4$');
+    enhanced = enhanced.replace(/([a-zA-Z])₅/g, '$1_5$');
+    enhanced = enhanced.replace(/([a-zA-Z])₆/g, '$1_6$');
+    enhanced = enhanced.replace(/([a-zA-Z])₇/g, '$1_7$');
+    enhanced = enhanced.replace(/([a-zA-Z])₈/g, '$1_8$');
+    enhanced = enhanced.replace(/([a-zA-Z])₉/g, '$1_9$');
+
+    // Handle superscripts like x², x³, etc.
+    enhanced = enhanced.replace(/([a-zA-Z0-9)])²/g, '$1^2$');
+    enhanced = enhanced.replace(/([a-zA-Z0-9)])³/g, '$1^3$');
+    enhanced = enhanced.replace(/([a-zA-Z0-9)])⁴/g, '$1^4$');
+    enhanced = enhanced.replace(/([a-zA-Z0-9)])⁵/g, '$1^5$');
+    enhanced = enhanced.replace(/([a-zA-Z0-9)])⁶/g, '$1^6$');
+    enhanced = enhanced.replace(/([a-zA-Z0-9)])⁷/g, '$1^7$');
+    enhanced = enhanced.replace(/([a-zA-Z0-9)])⁸/g, '$1^8$');
+    enhanced = enhanced.replace(/([a-zA-Z0-9)])⁹/g, '$1^9$');
+    enhanced = enhanced.replace(/([a-zA-Z0-9)])⁻¹/g, '$1^{-1}$');
+
+    // Handle fraction-like patterns (simple cases)
+    enhanced = enhanced.replace(/(\d+)\/(\d+)/g, '$\\frac{$1}{$2}$');
+
+    // Clean up any double dollar signs that might have been created
+    enhanced = enhanced.replace(/\$\$+/g, '$');
+
+    // Handle cases where LaTeX delimiters might be adjacent
+    enhanced = enhanced.replace(/\$\s*\$/g, '');
+
+    return enhanced;
+}
+
 // Function to show temporary provider notification
 function showProviderNotification(message) {
     // Create or get existing notification element
@@ -386,8 +462,17 @@ async function submitToAI() {
 
         console.log('Renderer received result from main:', result);
         if (result.success) {
+            // Process math content based on the provider and model
+            let processedContent = result.success;
+
+            // If using o4-mini, enhance mathematical notation for better rendering
+            if (currentProvider === 'openai' && currentModel === 'o4-mini') {
+                processedContent = enhanceMathNotation(processedContent);
+            }
+
             // Use innerHTML instead of value since we're working with a div now
-            responseTextArea.innerHTML = result.success;
+            responseTextArea.innerHTML = processedContent;
+
             // Render LaTeX using MathJax
             setTimeout(() => {
                 if (typeof window.typeset === 'function') {
