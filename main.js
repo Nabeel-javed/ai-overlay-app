@@ -55,8 +55,8 @@ const PROVIDER_CONFIG = {
     gemini: {
         name: "Google Gemini",
         models: {
-            "gemini-1.5-pro": {
-                modelName: "gemini-1.5-pro",
+            "gemini-2.5-flash": {
+                modelName: "gemini-2.5-flash",
                 baseUrl: "https://generativelanguage.googleapis.com/v1beta/models"
             }
         }
@@ -1037,7 +1037,7 @@ ipcMain.handle('call-gemini', async (event, payload) => {
 // Function to call the Gemini API
 async function callGeminiApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot) {
     // Base URL for the Gemini API
-    const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent';
+    const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
     // Create request headers
     const headers = {
@@ -1365,7 +1365,7 @@ async function callDeepSeekApi(apiKey, textInput, customInstructions, screenshot
 
     try {
         // Call the DeepSeek API
-        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        const response = await fetch('https://api.deepseek.com/chat/completions', {
             method: 'POST',
             headers: headers,
             body: JSON.stringify(requestBody)
