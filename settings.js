@@ -1,6 +1,5 @@
 // settings.js
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('Settings page loaded');
 
     // Get DOM elements
     const providerSelect = document.getElementById('provider-select');

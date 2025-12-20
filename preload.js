@@ -94,4 +94,3 @@ contextBridge.exposeInMainWorld('electronAPI', {
   clearHistory: () => ipcRenderer.invoke('clear-history')
 });
 
-console.log('Preload script executed');

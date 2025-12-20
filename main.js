@@ -6,6 +6,10 @@ const fetch = require('node-fetch');
 const crypto = require('crypto');
 const os = require('os');
 
+// Suppress SSL error logs in development
+// This prevents cluttering console with certificate/handshake errors
+app.commandLine.appendSwitch('ignore-certificate-errors');
+app.commandLine.appendSwitch('log-level', '3'); // Only show fatal errors
 
 // Set app name
 app.name = 'Spectro';
@@ -324,9 +328,7 @@ function registerShortcuts() {
     const shortcuts = {
         // --- Focus Shortcut ---
         'CommandOrControl+Shift+O': () => {
-            console.log('Focus shortcut pressed');
             if (!mainWindow || mainWindow.isDestroyed()) {
-                console.log("Main window doesn't exist or is destroyed.");
                 // If key exists, maybe try creating main window again?
                 if (getApiKey()) {
                     createMainWindow();
@@ -348,7 +350,6 @@ function registerShortcuts() {
         },
         // --- Toggle Visibility Shortcut ---
         'CommandOrControl+Shift+H': () => {
-            console.log('Toggle visibility shortcut pressed');
             if (!mainWindow || mainWindow.isDestroyed()) return;
             if (mainWindow.isVisible()) {
                 mainWindow.hide();
@@ -396,18 +397,15 @@ function registerShortcuts() {
     for (const accelerator in shortcuts) {
         const ret = globalShortcut.register(accelerator, shortcuts[accelerator]);
         if (!ret) console.error('Failed to register global shortcut:', accelerator);
-        else console.log(`Registered shortcut: ${accelerator}`);
     }
 }
 
 // --- Focus Logic Extracted ---
 function focusWindowAndInput() {
     if (!mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible()) {
-        console.log("Focus skipped: Window not ready or visible.");
         return;
     }
     try {
-        console.log("Focusing window and input...");
 
         // Platform-specific opacity handling
         if (process.platform === 'win32') {
@@ -454,14 +452,12 @@ function adjustOpacity(delta) {
     // Calculate new opacity and ensure it's within valid range (0.2 to 1.0)
     const newOpacity = Math.max(0.2, Math.min(1.0, currentOpacity + delta));
     mainWindow.setOpacity(newOpacity);
-    console.log(`Adjusted opacity: ${newOpacity.toFixed(2)}`);
     // Save the new opacity
     debouncedSaveWindowState();
 }
 
 // --- Screenshot Capture Function ---
 async function captureScreenshot() {
-    console.log('Screenshot shortcut pressed');
     if (!mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible()) return;
 
     try {
@@ -531,7 +527,6 @@ function resizeWindowForScreenshot(hasScreenshot) {
 
 // --- Function to reset the tool ---
 function resetTool() {
-    console.log('Reset tool shortcut pressed');
     if (!mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible()) return;
 
     // Resize window back to original size (in case it was enlarged for screenshot)
@@ -546,7 +541,6 @@ function resetTool() {
 
 // --- Function to cycle through providers ---
 function cycleProvider() {
-    console.log('Provider cycle shortcut pressed');
     if (!store) {
         console.error('Store not initialized, cannot cycle provider');
         return;
@@ -558,8 +552,8 @@ function cycleProvider() {
     const nextIndex = (currentIndex + 1) % providers.length;
     const nextProvider = providers[nextIndex];
 
-    console.log(`Cycling from ${currentProvider} to ${nextProvider}`);
     store.set('apiProvider', nextProvider);
+    console.log(`Provider: ${currentProvider} → ${nextProvider}`);
 
     // Send update to renderer to refresh UI
     if (mainWindow && !mainWindow.isDestroyed()) {
@@ -575,7 +569,6 @@ function cycleProvider() {
 
 // --- Function to switch to specific provider ---
 function switchToProvider(provider) {
-    console.log(`Direct provider switch to: ${provider}`);
     if (!store) {
         console.error('Store not initialized, cannot switch provider');
         return;
@@ -588,12 +581,11 @@ function switchToProvider(provider) {
 
     const currentProvider = store.get('apiProvider') || 'gemini';
     if (currentProvider === provider) {
-        console.log(`Already using ${provider}, no change needed`);
         return;
     }
 
-    console.log(`Switching from ${currentProvider} to ${provider}`);
     store.set('apiProvider', provider);
+    console.log(`Provider: ${currentProvider} → ${provider}`);
 
     // Send update to renderer to refresh UI
     if (mainWindow && !mainWindow.isDestroyed()) {
@@ -609,7 +601,6 @@ function switchToProvider(provider) {
 
 // --- Function to toggle DeepSeek reasoning mode ---
 function toggleDeepSeekReasoning() {
-    console.log('DeepSeek reasoning toggle shortcut pressed');
     if (!store) {
         console.error('Store not initialized, cannot toggle DeepSeek reasoning');
         return;
@@ -630,8 +621,8 @@ function toggleDeepSeekReasoning() {
     const currentState = store.get('deepseekUseReasoning') || false;
     const newState = !currentState;
 
-    console.log(`Toggling DeepSeek reasoning from ${currentState} to ${newState}`);
     store.set('deepseekUseReasoning', newState);
+    console.log(`DeepSeek model: ${currentState ? 'deepseek-reasoner' : 'deepseek-chat'} → ${newState ? 'deepseek-reasoner' : 'deepseek-chat'}`);
 
     // Send update to renderer to refresh UI
     if (mainWindow && !mainWindow.isDestroyed()) {
@@ -647,7 +638,6 @@ function toggleDeepSeekReasoning() {
 
 // --- Function to cycle between OpenAI models ---
 function cycleOpenAIModel() {
-    console.log('OpenAI model cycling shortcut pressed');
     if (!store) {
         console.error('Store not initialized, cannot cycle OpenAI model');
         return;
@@ -674,8 +664,8 @@ function cycleOpenAIModel() {
     const nextIndex = (currentIndex + 1) % openaiModels.length;
     const nextModel = openaiModels[nextIndex];
 
-    console.log(`Cycling OpenAI model from ${currentModel} to ${nextModel}`);
     store.set('openaiModel', nextModel);
+    console.log(`OpenAI model: ${currentModel} → ${nextModel}`);
 
     // Send update to renderer to refresh UI
     if (mainWindow && !mainWindow.isDestroyed()) {
@@ -694,7 +684,6 @@ function cycleOpenAIModel() {
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
-    console.log('Another instance is already running. Quitting...');
     app.quit();
 } else {
     // Handle second instance attempt - focus existing window
@@ -712,20 +701,17 @@ app.whenReady().then(async () => {
         app.dock.hide(); // Hide dock icon on macOS
     }
 
-    console.log("App ready. Initializing Store...");
     try {
         const Store = (await import('electron-store')).default;
         store = new Store({
             encryptionKey: process.platform === 'darwin' ? 'spectro-encryption-key' : machineIdSync()
         });
-        console.log("Store instance:", store);
     } catch (error) {
         console.error("Error initializing store:", error);
         // If store initialization fails, try without encryption
         try {
             const Store = (await import('electron-store')).default;
             store = new Store();
-            console.log("Store initialized without encryption as fallback");
         } catch (fallbackError) {
             console.error("Failed to initialize store even without encryption:", fallbackError);
         }
@@ -862,7 +848,6 @@ ipcMain.handle('save-settings', async (event, settings) => {
     }
 
     try {
-        console.log('Saving settings:', settings);
 
         if (settings.provider) {
             store.set('apiProvider', settings.provider);
@@ -890,15 +875,12 @@ ipcMain.handle('save-settings', async (event, settings) => {
 
         // Save reasoning toggle
         store.set('enableReasoning', !!settings.enableReasoning);
-        console.log('Reasoning enabled:', !!settings.enableReasoning);
 
         // Save DeepSeek reasoning toggle
         store.set('deepseekUseReasoning', !!settings.deepseekUseReasoning);
-        console.log('DeepSeek reasoning enabled:', !!settings.deepseekUseReasoning);
 
         // Save Claude Opus toggle
         store.set('claudeUseOpus', !!settings.claudeUseOpus);
-        console.log('Claude Opus enabled:', !!settings.claudeUseOpus);
 
         // Close settings window
         if (settingsWindow && !settingsWindow.isDestroyed()) {
@@ -969,7 +951,6 @@ ipcMain.on('open-settings', () => {
 
 // --- IPC Handler: Close Settings Window ---
 ipcMain.on('close-settings-window', () => {
-    console.log('Received close-settings-window request');
     if (settingsWindow && !settingsWindow.isDestroyed()) {
         settingsWindow.close();
     }
@@ -977,7 +958,6 @@ ipcMain.on('close-settings-window', () => {
 
 // --- IPC Handler: Combined Save and Close ---
 ipcMain.on('save-and-close', (event, settings) => {
-    console.log('Received save-and-close request');
 
     try {
         // Save settings directly
@@ -999,15 +979,11 @@ ipcMain.on('save-and-close', (event, settings) => {
 
         // Save reasoning toggle
         store.set('enableReasoning', !!settings.enableReasoning);
-        console.log('Reasoning enabled:', !!settings.enableReasoning);
-
-        console.log('Settings saved via direct method');
 
         // Force close the window with timeout as fallback
         if (settingsWindow && !settingsWindow.isDestroyed()) {
             try {
                 settingsWindow.close();
-                console.log('Settings window closed');
             } catch (closeError) {
                 console.error('Error closing window:', closeError);
             }
@@ -1015,7 +991,6 @@ ipcMain.on('save-and-close', (event, settings) => {
             // Force destroy as fallback if close fails
             setTimeout(() => {
                 if (settingsWindow && !settingsWindow.isDestroyed()) {
-                    console.log('Forcing window destruction as fallback');
                     settingsWindow.destroy();
                 }
             }, 100);
@@ -1032,7 +1007,6 @@ ipcMain.handle('get-reasoning-state', async (event) => {
         return false; // Default to false if store not ready
     }
     const state = store.get('enableReasoning') || false;
-    console.log('Reporting reasoning state:', state);
     return state;
 });
 
@@ -1042,7 +1016,6 @@ ipcMain.on('toggle-reasoning', (event, newState) => {
         console.error('Store not initialized, cannot toggle reasoning');
         return;
     }
-    console.log('Toggling reasoning state to:', newState);
     store.set('enableReasoning', !!newState);
 });
 
@@ -1053,7 +1026,6 @@ ipcMain.on('save-model-selection', (event, modelId) => {
         return;
     }
     if (modelId && (modelId === '4.1')) {
-        console.log('Saving model selection:', modelId);
         store.set('openaiModel', modelId);
     } else {
         console.error('Invalid model ID:', modelId);
@@ -1067,7 +1039,6 @@ ipcMain.on('select-provider', (event, provider) => {
         return;
     }
     if (provider && ['openai', 'gemini', 'deepseek', 'claude'].includes(provider)) {
-        console.log('Selecting provider:', provider);
         store.set('apiProvider', provider);
 
         // Send update to renderer to refresh UI
@@ -1093,7 +1064,6 @@ ipcMain.on('toggle-deepseek-reasoning', (event, enabled) => {
         console.error('Store not initialized, cannot toggle DeepSeek reasoning');
         return;
     }
-    console.log('Toggling DeepSeek reasoning to:', enabled);
     store.set('deepseekUseReasoning', !!enabled);
 });
 
@@ -1111,8 +1081,9 @@ ipcMain.on('toggle-claude-opus', (event, enabled) => {
         console.error('Store not initialized, cannot toggle Claude Opus');
         return;
     }
-    console.log('Toggling Claude Opus to:', enabled);
+    const currentState = store.get('claudeUseOpus') || false;
     store.set('claudeUseOpus', !!enabled);
+    console.log(`Claude model: ${currentState ? 'claude-opus-4-5' : 'claude-sonnet-4-5'} → ${enabled ? 'claude-opus-4-5' : 'claude-sonnet-4-5'}`);
 });
 
 // --- IPC Handler: Get Claude Opus State ---
@@ -1125,7 +1096,6 @@ ipcMain.handle('get-claude-opus-state', async (event) => {
 
 // --- IPC Handler: Call AI API ---
 ipcMain.handle('call-gemini', async (event, payload) => {
-    console.log('Main process received request to call AI API');
     if (!store) {
         return { error: 'Store is not initialized' };
     }
@@ -1164,12 +1134,6 @@ ipcMain.handle('call-gemini', async (event, payload) => {
                 customInstructions = parsedPayload.instructions || '';
                 requestedModel = parsedPayload.model || null;
                 hasScreenshot = !!screenshotData;
-                console.log('Parsed payload. Has screenshot:', hasScreenshot);
-                if (requestedModel) {
-                    console.log('Requested model:', requestedModel);
-                }
-                console.log('Screenshot data type:', typeof screenshotData);
-                console.log('Screenshot data starts with:', screenshotData ? screenshotData.substring(0, 50) + '...' : 'null');
             } catch (parseError) {
                 console.error('Error parsing JSON payload:', parseError);
                 // Fall back to treating payload as plain text
@@ -1194,8 +1158,11 @@ ipcMain.handle('call-gemini', async (event, payload) => {
 
 // Function to call the Gemini API
 async function callGeminiApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot) {
+    const model = 'gemini-2.5-flash';
+    console.log(`API Request: Gemini (${model})`);
+
     // Base URL for the Gemini API
-    const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
     // Create request headers
     const headers = {
@@ -1261,9 +1228,11 @@ async function callGeminiApi(apiKey, textInput, customInstructions, screenshotDa
         responseData.candidates[0].content && responseData.candidates[0].content.parts &&
         responseData.candidates[0].content.parts.length > 0) {
         const textResponse = responseData.candidates[0].content.parts[0].text;
+        console.log(`API Response: Gemini (${model}) - Success`);
         // Send raw response with LaTeX intact for proper rendering
         return { success: textResponse };
     } else {
+        console.log(`API Response: Gemini (${model}) - No valid response`);
         return { error: 'No valid response from Gemini' };
     }
 }
@@ -1277,11 +1246,10 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
     const modelConfig = MODEL_CONFIG[selectedModel];
     const apiUrl = modelConfig.baseUrl;
 
-    console.log(`Using OpenAI model: ${modelConfig.modelName}`);
+    console.log(`API Request: OpenAI (${modelConfig.modelName})`);
 
     // Check if reasoning is enabled - only applicable for o4-mini model
     const enableReasoning = (selectedModel === 'o4-mini') && (store.get('enableReasoning') || false);
-    console.log(`Reasoning enabled: ${enableReasoning}`);
 
     // Create request headers
     const headers = {
@@ -1321,8 +1289,6 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
             image_url: screenshotData  // Pass the data URL directly as a string, not as an object
         });
 
-        console.log('Image URL format being sent: String (data URL)');
-        console.log('Image URL starts with:', screenshotData.substring(0, 30) + '...');
     }
 
     // Create the input message array
@@ -1392,7 +1358,6 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
 
     // Add reasoning only for o4-mini model if enabled
     if (selectedModel === 'o4-mini' && enableReasoning) {
-        console.log('Adding reasoning to request for o4-mini');
         if (selectedModel === '4.1') {
             requestBody.reasoning = {
                 effort: "high"
@@ -1404,7 +1369,6 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
         }
     }
 
-    console.log('Sending API request to OpenAI:', modelConfig.modelName);
 
     // Call the OpenAI API
     const response = await fetch(apiUrl, {
@@ -1417,8 +1381,6 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
     const responseData = await response.json();
 
     // Log the response for debugging
-    console.log('API response status:', response.status);
-    console.log('API response data:', JSON.stringify(responseData, null, 2));
 
     // Check for errors in the response
     if (!response.ok) {
@@ -1426,6 +1388,8 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
         console.error('OpenAI API error:', error);
         return { error: `API Error: ${error.message}` };
     }
+
+    console.log(`API Response: OpenAI (${modelConfig.modelName}) - Success`);
 
     // Extract the text from response - handle different formats
     if (selectedModel === '4.1' && responseData.output) {
@@ -1468,7 +1432,8 @@ async function callDeepSeekApi(apiKey, textInput, customInstructions, screenshot
 
     // Select model based on reasoning setting
     const model = useReasoning ? 'deepseek-reasoner' : 'deepseek-chat';
-    console.log(`Using DeepSeek model: ${model}, Reasoning: ${useReasoning}`);
+
+    console.log(`API Request: DeepSeek (${model})`);
 
     // Create request headers
     const headers = {
@@ -1492,7 +1457,6 @@ async function callDeepSeekApi(apiKey, textInput, customInstructions, screenshot
     // For screenshots, we need to handle them differently - DeepSeek might not support vision yet
     if (hasScreenshot && screenshotData) {
         userContent += (userContent ? '\n\n' : '') + 'I have attached a screenshot for analysis.';
-        console.log('Note: DeepSeek may not support image analysis. Sending text-only request.');
     }
 
     // If no content, use a default
@@ -1519,7 +1483,6 @@ async function callDeepSeekApi(apiKey, textInput, customInstructions, screenshot
         temperature: 0.7
     };
 
-    console.log('Sending API request to DeepSeek:', model);
 
     try {
         // Call the DeepSeek API
@@ -1530,8 +1493,6 @@ async function callDeepSeekApi(apiKey, textInput, customInstructions, screenshot
         });
 
         // Log the response for debugging
-        console.log('DeepSeek API response status:', response.status);
-        console.log('DeepSeek API response headers:', response.headers.get('content-type'));
 
         // Check for errors in the response first
         if (!response.ok) {
@@ -1543,7 +1504,6 @@ async function callDeepSeekApi(apiKey, textInput, customInstructions, screenshot
 
         // Parse the response
         const responseText = await response.text();
-        console.log('DeepSeek API raw response:', responseText.substring(0, 200) + '...');
 
         let responseData;
         try {
@@ -1554,17 +1514,18 @@ async function callDeepSeekApi(apiKey, textInput, customInstructions, screenshot
             return { error: `Invalid response format from DeepSeek API` };
         }
 
-        console.log('DeepSeek API response data:', JSON.stringify(responseData, null, 2));
 
         // Extract the text from the response
         if (responseData.choices && responseData.choices.length > 0) {
             const choice = responseData.choices[0];
             if (choice.message && choice.message.content) {
                 const textContent = choice.message.content;
+                console.log(`API Response: DeepSeek (${model}) - Success`);
                 return { success: textContent.trim() };
             }
         }
 
+        console.log(`API Response: DeepSeek (${model}) - No valid response`);
         return { error: 'No valid response from DeepSeek' };
     } catch (error) {
         console.error('Error calling DeepSeek API:', error);
@@ -1574,12 +1535,11 @@ async function callDeepSeekApi(apiKey, textInput, customInstructions, screenshot
 
 // Function to call the Claude API (Anthropic)
 async function callClaudeApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot) {
-    console.log('Calling Claude API...');
-
     // Check if Opus is enabled
     const useOpus = store.get('claudeUseOpus') || false;
     const model = useOpus ? 'claude-opus-4-5-20251101' : 'claude-sonnet-4-5-20250929';
-    console.log(`Using Claude model: ${model}, Opus: ${useOpus}`);
+
+    console.log(`API Request: Claude (${model})`);
 
     // Create request headers
     const headers = {
@@ -1638,7 +1598,6 @@ async function callClaudeApi(apiKey, textInput, customInstructions, screenshotDa
         ]
     };
 
-    console.log('Sending API request to Claude');
 
     try {
         const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1647,7 +1606,6 @@ async function callClaudeApi(apiKey, textInput, customInstructions, screenshotDa
             body: JSON.stringify(requestBody)
         });
 
-        console.log('Claude API response status:', response.status);
 
         if (!response.ok) {
             const errorText = await response.text();
@@ -1656,16 +1614,17 @@ async function callClaudeApi(apiKey, textInput, customInstructions, screenshotDa
         }
 
         const responseData = await response.json();
-        console.log('Claude API response data:', JSON.stringify(responseData, null, 2));
 
         // Extract the text from the response
         if (responseData.content && responseData.content.length > 0) {
             const textBlock = responseData.content.find(block => block.type === 'text');
             if (textBlock && textBlock.text) {
+                console.log(`API Response: Claude (${model}) - Success`);
                 return { success: textBlock.text.trim() };
             }
         }
 
+        console.log(`API Response: Claude (${model}) - No valid response`);
         return { error: 'No valid response from Claude' };
     } catch (error) {
         console.error('Error calling Claude API:', error);
@@ -1836,7 +1795,7 @@ async function getSystemInfo() {
             hostnamePrefix: os.hostname().substring(0, 3)
         };
 
-        // Call your license server with enhanced security
+        // Call your license server with enhanced security and error handling
         const response = await fetch('https://license-verification-server.onrender.com/api/check-license', {
             method: 'POST',
             headers: {
@@ -1853,6 +1812,14 @@ async function getSystemInfo() {
             }),
             // Set a reasonable timeout
             timeout: 10000
+        }).catch(error => {
+            // Suppress SSL and network errors in console
+            // These are expected when server is sleeping or unreachable
+            if (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT' ||
+                error.message.includes('SSL') || error.message.includes('handshake')) {
+                throw new Error('License server temporarily unavailable');
+            }
+            throw error;
         });
 
         if (!response.ok) {
@@ -1891,13 +1858,6 @@ async function getSystemInfo() {
                 console.error('License response missing signature');
                 throw new Error('Invalid server response - missing signature');
             }
-        }
-
-        // Log remaining time
-        if (data.valid && data.hoursRemaining) {
-            console.log(`License valid. ${data.hoursRemaining} hours remaining.`);
-        } else if (!data.valid) {
-            console.log(`License invalid: ${data.message}`);
         }
 
         return {

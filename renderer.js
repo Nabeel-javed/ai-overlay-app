@@ -52,7 +52,6 @@ const historyIndicator = document.getElementById('history-indicator');
 // --- NEW: IPC Listener for focus request ---
 // When the main process sends 'focus-input', focus the text area
 window.electronAPI.onFocusInput(() => {
-    console.log('Renderer received focus request.');
     inputTextArea.focus();
     // Optional: Select existing text?
     // inputTextArea.select();
@@ -61,34 +60,26 @@ window.electronAPI.onFocusInput(() => {
 // --- NEW: IPC Listener for checking which element to focus ---
 // Checks if a screenshot is present and focuses the appropriate field
 window.electronAPI.onCheckFocusTarget(() => {
-    console.log('Renderer received check-focus-target request.');
     if (currentScreenshot && !screenshotSection.classList.contains('hidden')) {
-        // If a screenshot is present, focus the custom instructions textarea
-        console.log('Screenshot present, focusing instructions textarea');
         instructionsTextArea.focus();
     } else {
-        // Otherwise, focus the main input textarea
-        console.log('No screenshot, focusing main input textarea');
         inputTextArea.focus();
     }
 });
 
 // --- IPC Listener for screenshot capture ---
 window.electronAPI.onScreenshotCaptured((dataUrl) => {
-    console.log('Renderer received screenshot.');
     currentScreenshot = dataUrl;
     displayScreenshot(dataUrl);
 });
 
 // --- IPC Listener for clearing screenshot ---
 window.electronAPI.onClearScreenshot(() => {
-    console.log('Renderer received clear screenshot request.');
     removeScreenshot();
 });
 
 // --- IPC Listener for resetting tool ---
 window.electronAPI.onResetTool(() => {
-    console.log('Renderer received reset tool request.');
     resetTool();
 });
 
@@ -224,12 +215,10 @@ function resetTool() {
     // Focus the input field
     inputTextArea.focus();
 
-    console.log('Tool has been reset to default state');
 }
 
 // --- Event Listener: Remove Screenshot Button ---
 removeScreenshotButton.addEventListener('click', () => {
-    console.log('Remove screenshot button clicked.');
     removeScreenshot();
     window.electronAPI.sendRemoveScreenshot();
 });
@@ -237,7 +226,6 @@ removeScreenshotButton.addEventListener('click', () => {
 // --- Event Listener: Settings Button ---
 if (settingsButton) {
     settingsButton.addEventListener('click', () => {
-        console.log('Settings button clicked.');
         window.electronAPI.openSettings();
     });
 }
@@ -272,7 +260,6 @@ if (copyResponseButton) {
 providerButtons.forEach(button => {
     button.addEventListener('click', () => {
         const providerId = button.dataset.provider;
-        console.log(`Provider button clicked: ${providerId}`);
 
         // Update UI first
         updateProviderUI(providerId);
@@ -289,7 +276,6 @@ providerButtons.forEach(button => {
 modelButtons.forEach(button => {
     button.addEventListener('click', () => {
         const modelId = button.dataset.model;
-        console.log(`Model button clicked: ${modelId}`);
 
         // Update UI first
         updateModelUI(modelId);
@@ -306,7 +292,6 @@ modelButtons.forEach(button => {
 if (reasoningCheckbox && reasoningLabel) {
     reasoningCheckbox.addEventListener('change', (event) => {
         const isEnabled = event.target.checked;
-        console.log(`Reasoning checkbox changed to: ${isEnabled}`);
         // We don't update the label text anymore with On/Off
         window.electronAPI.toggleReasoning(isEnabled);
     });
@@ -316,7 +301,6 @@ if (reasoningCheckbox && reasoningLabel) {
 if (deepseekReasoningCheckbox) {
     deepseekReasoningCheckbox.addEventListener('change', (event) => {
         const isEnabled = event.target.checked;
-        console.log(`DeepSeek reasoning checkbox changed to: ${isEnabled}`);
         window.electronAPI.toggleDeepSeekReasoning(isEnabled);
     });
 }
@@ -325,27 +309,23 @@ if (deepseekReasoningCheckbox) {
 if (claudeOpusCheckbox) {
     claudeOpusCheckbox.addEventListener('change', (event) => {
         const isEnabled = event.target.checked;
-        console.log(`Claude Opus checkbox changed to: ${isEnabled}`);
         window.electronAPI.toggleClaudeOpus(isEnabled);
     });
 }
 
 // --- IPC Listener for provider changes ---
 window.electronAPI.onProviderChanged((provider) => {
-    console.log('Provider changed to:', provider);
     currentProvider = provider;
     updateProviderUI(provider);
 });
 
 // --- IPC Listener for provider notifications ---
 window.electronAPI.onProviderNotification((data) => {
-    console.log('Provider notification:', data);
     showProviderNotification(data.message);
 });
 
 // --- IPC Listener for DeepSeek reasoning changes ---
 window.electronAPI.onDeepSeekReasoningChanged((enabled) => {
-    console.log('DeepSeek reasoning changed to:', enabled);
     if (deepseekReasoningCheckbox) {
         deepseekReasoningCheckbox.checked = enabled;
     }
@@ -353,7 +333,6 @@ window.electronAPI.onDeepSeekReasoningChanged((enabled) => {
 
 // --- IPC Listener for OpenAI model changes ---
 window.electronAPI.onOpenAIModelChanged((model) => {
-    console.log('OpenAI model changed to:', model);
     currentModel = model;
     updateModelUI(model);
 });
@@ -485,7 +464,6 @@ async function loadHistory() {
         history = await window.electronAPI.getHistory();
         historyIndex = -1; // Start at current (new) entry
         updateHistoryIndicator();
-        console.log(`Loaded ${history.length} history entries`);
     } catch (error) {
         console.error('Failed to load history:', error);
         history = [];
@@ -665,10 +643,8 @@ async function submitToAI() {
             payload = JSON.stringify(textPayload);
         }
 
-        console.log('Renderer sending data to main process (AI)');
         const result = await window.electronAPI.invokeCallGemini(payload);
 
-        console.log('Renderer received result from main:', result);
         if (result.success) {
             // Process math content based on the provider and model
             let processedContent = result.success;
@@ -686,7 +662,6 @@ async function submitToAI() {
                 if (typeof window.typeset === 'function') {
                     try {
                         window.typeset();
-                        console.log('MathJax rendering triggered');
                     } catch (error) {
                         console.error('MathJax error:', error);
                     }
@@ -739,7 +714,6 @@ instructionsTextArea.addEventListener('keydown', (event) => {
 // --- Event Listener: Dismiss Button ---
 // Sends 'dismiss-overlay', which now hides the window in main.js
 dismissButton.addEventListener('click', () => {
-    console.log('Dismiss button clicked, sending request to main process to hide.');
     window.electronAPI.sendDismissOverlay();
 });
 
@@ -820,7 +794,6 @@ document.addEventListener('keydown', (event) => {
 
 // --- Initial State ---
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('DOM fully loaded and parsed');
     // Input area is now always enabled by default when window is visible.
     // Focus might be set initially by main process or via hotkey.
     submitButton.disabled = true; // Disable initially until input or screenshot
@@ -835,7 +808,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (reasoningCheckbox && reasoningLabel) {
         try {
             const initialState = await window.electronAPI.getReasoningState();
-            console.log('Initial reasoning state received:', initialState);
             reasoningCheckbox.checked = initialState;
             // We don't update the label text now with On/Off
 
@@ -853,7 +825,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (deepseekReasoningCheckbox) {
         try {
             const initialDeepSeekState = await window.electronAPI.getDeepSeekReasoningState();
-            console.log('Initial DeepSeek reasoning state received:', initialDeepSeekState);
             deepseekReasoningCheckbox.checked = initialDeepSeekState;
         } catch (error) {
             console.error('Error getting initial DeepSeek reasoning state:', error);
@@ -864,7 +835,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (claudeOpusCheckbox) {
         try {
             const initialClaudeOpusState = await window.electronAPI.getClaudeOpusState();
-            console.log('Initial Claude Opus state received:', initialClaudeOpusState);
             claudeOpusCheckbox.checked = initialClaudeOpusState;
         } catch (error) {
             console.error('Error getting initial Claude Opus state:', error);
