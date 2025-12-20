@@ -331,6 +331,13 @@ window.electronAPI.onDeepSeekReasoningChanged((enabled) => {
     }
 });
 
+// --- IPC Listener for Claude Opus changes ---
+window.electronAPI.onClaudeOpusChanged((enabled) => {
+    if (claudeOpusCheckbox) {
+        claudeOpusCheckbox.checked = enabled;
+    }
+});
+
 // --- IPC Listener for OpenAI model changes ---
 window.electronAPI.onOpenAIModelChanged((model) => {
     currentModel = model;

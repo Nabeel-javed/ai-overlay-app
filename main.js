@@ -385,8 +385,8 @@ function registerShortcuts() {
         'CommandOrControl+2': () => switchToProvider('gemini'),
         'CommandOrControl+3': () => switchToProvider('deepseek'),
         'CommandOrControl+4': () => switchToProvider('claude'),
-        // --- Toggle DeepSeek Reasoning ---
-        'CommandOrControl+Shift+R': () => toggleDeepSeekReasoning(),
+        // --- Toggle Enhanced Mode (DeepSeek R1 / Claude Opus) ---
+        'CommandOrControl+Shift+R': () => toggleEnhancedMode(),
         // --- Cycle OpenAI Models ---
         'CommandOrControl+Shift+M': () => cycleOpenAIModel(),
         // --- Opacity Control Shortcuts ---
@@ -599,40 +599,59 @@ function switchToProvider(provider) {
     }
 }
 
-// --- Function to toggle DeepSeek reasoning mode ---
-function toggleDeepSeekReasoning() {
+// --- Function to toggle enhanced mode (DeepSeek R1 or Claude Opus based on current provider) ---
+function toggleEnhancedMode() {
     if (!store) {
-        console.error('Store not initialized, cannot toggle DeepSeek reasoning');
+        console.error('Store not initialized, cannot toggle enhanced mode');
         return;
     }
 
     const currentProvider = store.get('apiProvider') || 'gemini';
-    if (currentProvider !== 'deepseek') {
-        // If not using DeepSeek, show notification and optionally switch
+
+    if (currentProvider === 'deepseek') {
+        // Toggle DeepSeek R1 reasoning
+        const currentState = store.get('deepseekUseReasoning') || false;
+        const newState = !currentState;
+
+        store.set('deepseekUseReasoning', newState);
+        console.log(`DeepSeek model: ${currentState ? 'deepseek-reasoner' : 'deepseek-chat'} → ${newState ? 'deepseek-reasoner' : 'deepseek-chat'}`);
+
+        // Send update to renderer to refresh UI
         if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('deepseek-reasoning-changed', newState);
+
+            // Also send a notification message
             mainWindow.webContents.send('provider-notification', {
                 provider: 'deepseek',
-                message: 'Switch to DeepSeek first to toggle R1 reasoning'
+                message: `DeepSeek R1 Mode ${newState ? 'Enabled' : 'Disabled'}`
             });
         }
-        return;
-    }
+    } else if (currentProvider === 'claude') {
+        // Toggle Claude Opus
+        const currentState = store.get('claudeUseOpus') || false;
+        const newState = !currentState;
 
-    const currentState = store.get('deepseekUseReasoning') || false;
-    const newState = !currentState;
+        store.set('claudeUseOpus', newState);
+        console.log(`Claude model: ${currentState ? 'claude-opus-4-5' : 'claude-sonnet-4-5'} → ${newState ? 'claude-opus-4-5' : 'claude-sonnet-4-5'}`);
 
-    store.set('deepseekUseReasoning', newState);
-    console.log(`DeepSeek model: ${currentState ? 'deepseek-reasoner' : 'deepseek-chat'} → ${newState ? 'deepseek-reasoner' : 'deepseek-chat'}`);
+        // Send update to renderer to refresh UI
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('claude-opus-changed', newState);
 
-    // Send update to renderer to refresh UI
-    if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('deepseek-reasoning-changed', newState);
-
-        // Also send a notification message
-        mainWindow.webContents.send('provider-notification', {
-            provider: 'deepseek',
-            message: `DeepSeek R1 Mode ${newState ? 'Enabled' : 'Disabled'}`
-        });
+            // Also send a notification message
+            mainWindow.webContents.send('provider-notification', {
+                provider: 'claude',
+                message: `Claude Opus ${newState ? 'Enabled' : 'Disabled'}`
+            });
+        }
+    } else {
+        // Not on DeepSeek or Claude, show notification
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('provider-notification', {
+                provider: currentProvider,
+                message: 'Switch to DeepSeek or Claude to toggle enhanced mode'
+            });
+        }
     }
 }
 

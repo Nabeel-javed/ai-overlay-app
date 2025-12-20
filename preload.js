@@ -87,6 +87,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Claude Opus toggle
   toggleClaudeOpus: (enabled) => ipcRenderer.send('toggle-claude-opus', enabled),
   getClaudeOpusState: () => ipcRenderer.invoke('get-claude-opus-state'),
+  onClaudeOpusChanged: (callback) => ipcRenderer.on('claude-opus-changed', (event, enabled) => callback(enabled)),
 
   // Response history channels
   getHistory: () => ipcRenderer.invoke('get-history'),
