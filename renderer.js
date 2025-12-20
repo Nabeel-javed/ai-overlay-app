@@ -31,6 +31,8 @@ const providerButtons = document.querySelectorAll('.provider-btn');
 const modelSelector = document.getElementById('openai-model-selector');
 const deepseekReasoningToggle = document.getElementById('deepseek-reasoning-toggle');
 const deepseekReasoningCheckbox = document.getElementById('enable-reasoning-deepseek');
+const claudeModelToggle = document.getElementById('claude-model-toggle');
+const claudeOpusCheckbox = document.getElementById('enable-opus-claude');
 
 // Variable to store the current screenshot data URL
 let currentScreenshot = null;
@@ -124,16 +126,25 @@ function updateProviderUI(providerId) {
     if (providerId === 'openai') {
         modelSelector.style.display = 'flex';
         deepseekReasoningToggle.style.display = 'none';
+        claudeModelToggle.style.display = 'none';
         // Keep the current OpenAI model
     } else if (providerId === 'deepseek') {
         modelSelector.style.display = 'none';
         deepseekReasoningToggle.style.display = 'flex';
+        claudeModelToggle.style.display = 'none';
         // Clear model selection for DeepSeek (it uses reasoning toggle instead)
         currentModel = null;
-    } else {
-        // Gemini - hide both
+    } else if (providerId === 'claude') {
         modelSelector.style.display = 'none';
         deepseekReasoningToggle.style.display = 'none';
+        claudeModelToggle.style.display = 'flex';
+        // Clear model selection for Claude (it uses opus toggle instead)
+        currentModel = null;
+    } else {
+        // Gemini - hide all
+        modelSelector.style.display = 'none';
+        deepseekReasoningToggle.style.display = 'none';
+        claudeModelToggle.style.display = 'none';
         // Clear model selection for Gemini
         currentModel = null;
     }
@@ -307,6 +318,15 @@ if (deepseekReasoningCheckbox) {
         const isEnabled = event.target.checked;
         console.log(`DeepSeek reasoning checkbox changed to: ${isEnabled}`);
         window.electronAPI.toggleDeepSeekReasoning(isEnabled);
+    });
+}
+
+// --- Event Listener: Claude Opus Checkbox ---
+if (claudeOpusCheckbox) {
+    claudeOpusCheckbox.addEventListener('change', (event) => {
+        const isEnabled = event.target.checked;
+        console.log(`Claude Opus checkbox changed to: ${isEnabled}`);
+        window.electronAPI.toggleClaudeOpus(isEnabled);
     });
 }
 
@@ -837,6 +857,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             deepseekReasoningCheckbox.checked = initialDeepSeekState;
         } catch (error) {
             console.error('Error getting initial DeepSeek reasoning state:', error);
+        }
+    }
+
+    // Get initial Claude Opus state and set checkbox
+    if (claudeOpusCheckbox) {
+        try {
+            const initialClaudeOpusState = await window.electronAPI.getClaudeOpusState();
+            console.log('Initial Claude Opus state received:', initialClaudeOpusState);
+            claudeOpusCheckbox.checked = initialClaudeOpusState;
+        } catch (error) {
+            console.error('Error getting initial Claude Opus state:', error);
         }
     }
 });

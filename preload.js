@@ -84,6 +84,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onDeepSeekReasoningChanged: (callback) => ipcRenderer.on('deepseek-reasoning-changed', (event, enabled) => callback(enabled)),
   onOpenAIModelChanged: (callback) => ipcRenderer.on('openai-model-changed', (event, model) => callback(model)),
 
+  // Claude Opus toggle
+  toggleClaudeOpus: (enabled) => ipcRenderer.send('toggle-claude-opus', enabled),
+  getClaudeOpusState: () => ipcRenderer.invoke('get-claude-opus-state'),
+
   // Response history channels
   getHistory: () => ipcRenderer.invoke('get-history'),
   saveHistoryEntry: (entry) => ipcRenderer.invoke('save-history-entry', entry),

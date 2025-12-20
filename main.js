@@ -850,7 +850,8 @@ ipcMain.handle('get-settings', async (event) => {
         claudeKey: store.get('claudeApiKey') || '',
         openaiModel: store.get('openaiModel') || 'o4-mini',
         enableReasoning: store.get('enableReasoning') || false,
-        deepseekUseReasoning: store.get('deepseekUseReasoning') || false
+        deepseekUseReasoning: store.get('deepseekUseReasoning') || false,
+        claudeUseOpus: store.get('claudeUseOpus') || false
     };
 });
 
@@ -894,6 +895,10 @@ ipcMain.handle('save-settings', async (event, settings) => {
         // Save DeepSeek reasoning toggle
         store.set('deepseekUseReasoning', !!settings.deepseekUseReasoning);
         console.log('DeepSeek reasoning enabled:', !!settings.deepseekUseReasoning);
+
+        // Save Claude Opus toggle
+        store.set('claudeUseOpus', !!settings.claudeUseOpus);
+        console.log('Claude Opus enabled:', !!settings.claudeUseOpus);
 
         // Close settings window
         if (settingsWindow && !settingsWindow.isDestroyed()) {
@@ -1098,6 +1103,24 @@ ipcMain.handle('get-deepseek-reasoning-state', async (event) => {
         return false;
     }
     return store.get('deepseekUseReasoning') || false;
+});
+
+// --- IPC Listener: Toggle Claude Opus ---
+ipcMain.on('toggle-claude-opus', (event, enabled) => {
+    if (!store) {
+        console.error('Store not initialized, cannot toggle Claude Opus');
+        return;
+    }
+    console.log('Toggling Claude Opus to:', enabled);
+    store.set('claudeUseOpus', !!enabled);
+});
+
+// --- IPC Handler: Get Claude Opus State ---
+ipcMain.handle('get-claude-opus-state', async (event) => {
+    if (!store) {
+        return false;
+    }
+    return store.get('claudeUseOpus') || false;
 });
 
 // --- IPC Handler: Call AI API ---
@@ -1553,6 +1576,11 @@ async function callDeepSeekApi(apiKey, textInput, customInstructions, screenshot
 async function callClaudeApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot) {
     console.log('Calling Claude API...');
 
+    // Check if Opus is enabled
+    const useOpus = store.get('claudeUseOpus') || false;
+    const model = useOpus ? 'claude-opus-4-5-20251101' : 'claude-sonnet-4-5-20250929';
+    console.log(`Using Claude model: ${model}, Opus: ${useOpus}`);
+
     // Create request headers
     const headers = {
         'Content-Type': 'application/json',
@@ -1600,7 +1628,7 @@ async function callClaudeApi(apiKey, textInput, customInstructions, screenshotDa
 
     // Build request body
     const requestBody = {
-        model: 'claude-sonnet-4-20250514',
+        model: model,
         max_tokens: 4096,
         messages: [
             {

@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const cancelButton = document.getElementById('cancel-button');
     const enableReasoning = document.getElementById('enable-reasoning'); // May be null if commented out
     const deepseekReasoning = document.getElementById('deepseek-reasoning');
+    const claudeOpus = document.getElementById('claude-opus');
     const geminiSettings = document.getElementById('gemini-settings');
     const openaiSettings = document.getElementById('openai-settings');
     const deepseekSettings = document.getElementById('deepseek-settings');
@@ -44,6 +45,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (deepseekReasoning) {
             deepseekReasoning.checked = settings.deepseekUseReasoning || false;
+        }
+
+        if (claudeOpus) {
+            claudeOpus.checked = settings.claudeUseOpus || false;
         }
 
         // Update button UI based on saved provider
@@ -130,7 +135,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             claudeKey: claudeKey.value,
             openaiModel: openaiModel ? openaiModel.value : (currentSettings.openaiModel || 'o4-mini'),
             enableReasoning: enableReasoning ? enableReasoning.checked : (currentSettings.enableReasoning || false),
-            deepseekUseReasoning: deepseekReasoning ? deepseekReasoning.checked : (currentSettings.deepseekUseReasoning || false)
+            deepseekUseReasoning: deepseekReasoning ? deepseekReasoning.checked : (currentSettings.deepseekUseReasoning || false),
+            claudeUseOpus: claudeOpus ? claudeOpus.checked : (currentSettings.claudeUseOpus || false)
         };
 
         try {
