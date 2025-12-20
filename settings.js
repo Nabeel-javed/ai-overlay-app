@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const geminiKey = document.getElementById('gemini-key');
     const openaiKey = document.getElementById('openai-key');
     const deepseekKey = document.getElementById('deepseek-key');
+    const claudeKey = document.getElementById('claude-key');
     const openaiModel = document.getElementById('openai-model'); // May be null if commented out
     const saveButton = document.getElementById('save-button');
     const cancelButton = document.getElementById('cancel-button');
@@ -15,9 +16,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const geminiSettings = document.getElementById('gemini-settings');
     const openaiSettings = document.getElementById('openai-settings');
     const deepseekSettings = document.getElementById('deepseek-settings');
+    const claudeSettings = document.getElementById('claude-settings');
     const geminiProviderBtn = document.getElementById('gemini-provider');
     const openaiProviderBtn = document.getElementById('openai-provider');
     const deepseekProviderBtn = document.getElementById('deepseek-provider');
+    const claudeProviderBtn = document.getElementById('claude-provider');
 
     // Initially load current settings
     try {
@@ -28,6 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         geminiKey.value = settings.geminiKey || '';
         openaiKey.value = settings.openaiKey || '';
         deepseekKey.value = settings.deepseekKey || '';
+        claudeKey.value = settings.claudeKey || '';
 
         // Only set values if elements exist
         if (openaiModel) {
@@ -57,6 +61,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         geminiSettings.style.display = provider === 'gemini' ? 'block' : 'none';
         openaiSettings.style.display = provider === 'openai' ? 'block' : 'none';
         deepseekSettings.style.display = provider === 'deepseek' ? 'block' : 'none';
+        claudeSettings.style.display = provider === 'claude' ? 'block' : 'none';
     }
 
     // Update provider buttons active state
@@ -64,6 +69,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         geminiProviderBtn.classList.remove('active');
         openaiProviderBtn.classList.remove('active');
         deepseekProviderBtn.classList.remove('active');
+        claudeProviderBtn.classList.remove('active');
 
         if (provider === 'gemini') {
             geminiProviderBtn.classList.add('active');
@@ -71,6 +77,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             openaiProviderBtn.classList.add('active');
         } else if (provider === 'deepseek') {
             deepseekProviderBtn.classList.add('active');
+        } else if (provider === 'claude') {
+            claudeProviderBtn.classList.add('active');
         }
     }
 
@@ -95,6 +103,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateSettingsVisibility();
     });
 
+    // Event listener for Claude provider button
+    claudeProviderBtn.addEventListener('click', () => {
+        providerSelect.value = 'claude';
+        updateProviderButtons('claude');
+        updateSettingsVisibility();
+    });
+
     // Event listener for save button
     saveButton.addEventListener('click', async () => {
         // Get current settings to maintain values for commented out elements
@@ -112,6 +127,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             geminiKey: geminiKey.value,
             openaiKey: openaiKey.value,
             deepseekKey: deepseekKey.value,
+            claudeKey: claudeKey.value,
             openaiModel: openaiModel ? openaiModel.value : (currentSettings.openaiModel || 'o4-mini'),
             enableReasoning: enableReasoning ? enableReasoning.checked : (currentSettings.enableReasoning || false),
             deepseekUseReasoning: deepseekReasoning ? deepseekReasoning.checked : (currentSettings.deepseekUseReasoning || false)

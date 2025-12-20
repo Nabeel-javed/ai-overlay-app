@@ -155,6 +155,69 @@ button {
     /* Push indicator to the right */
 }
 
+/* Response header with copy button */
+.response-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.response-header label {
+    margin-bottom: 0;
+}
+
+.response-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* History indicator */
+.history-indicator {
+    font-size: 10px;
+    color: var(--label-color);
+    background-color: var(--input-bg);
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid var(--border-color);
+}
+
+.history-indicator.active {
+    color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+/* Icon button style for copy, etc. */
+.icon-button {
+    background-color: transparent;
+    color: var(--label-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.icon-button:hover {
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    border-color: var(--text-color);
+}
+
+.icon-button:active {
+    background-color: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+.icon-button.copied {
+    background-color: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
 /* Make response area flexible */
 #response-textarea {
     flex-grow: 1;
@@ -410,4 +473,47 @@ button {
     #shortcut-hints {
         display: block;
     }
+}
+
+/* Notification system styles */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    z-index: 1000;
+    opacity: 0;
+    transform: translateX(20px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none;
+    max-width: 280px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.notification.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.notification-success {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.notification-info {
+    background-color: #2196F3;
+    color: white;
+}
+
+.notification-warning {
+    background-color: #FF9800;
+    color: white;
+}
+
+.notification-error {
+    background-color: #f44336;
+    color: white;
 }

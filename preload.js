@@ -82,7 +82,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   toggleDeepSeekReasoning: (enabled) => ipcRenderer.send('toggle-deepseek-reasoning', enabled),
   getDeepSeekReasoningState: () => ipcRenderer.invoke('get-deepseek-reasoning-state'),
   onDeepSeekReasoningChanged: (callback) => ipcRenderer.on('deepseek-reasoning-changed', (event, enabled) => callback(enabled)),
-  onOpenAIModelChanged: (callback) => ipcRenderer.on('openai-model-changed', (event, model) => callback(model))
+  onOpenAIModelChanged: (callback) => ipcRenderer.on('openai-model-changed', (event, model) => callback(model)),
+
+  // Response history channels
+  getHistory: () => ipcRenderer.invoke('get-history'),
+  saveHistoryEntry: (entry) => ipcRenderer.invoke('save-history-entry', entry),
+  clearHistory: () => ipcRenderer.invoke('clear-history')
 });
 
 console.log('Preload script executed');

@@ -17,6 +17,40 @@ let settingsWindow; // Add settings window reference
 let store; // Declare globally, initialize later
 const MOVE_STEP = 20; // Pixels to move the window per hotkey press
 
+// --- Debounce utility for window state saving ---
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// --- Window state persistence ---
+function getWindowState() {
+    if (!store) return null;
+    return store.get('windowState') || null;
+}
+
+function saveWindowState() {
+    if (!store || !mainWindow || mainWindow.isDestroyed()) return;
+    try {
+        const [x, y] = mainWindow.getPosition();
+        const [width, height] = mainWindow.getSize();
+        const opacity = mainWindow.getOpacity();
+        store.set('windowState', { x, y, width, height, opacity });
+    } catch (error) {
+        console.error('Error saving window state:', error);
+    }
+}
+
+// Debounced version to avoid excessive writes during dragging
+const debouncedSaveWindowState = debounce(saveWindowState, 300);
+
 // Configuration for different models
 const MODEL_CONFIG = {
     "4.1": {
@@ -166,24 +200,32 @@ function createMainWindow() {
     // Windows-specific configuration
     const isWindows = process.platform === 'win32';
 
+    // Restore saved window state or use defaults
+    const savedState = getWindowState();
+    const defaultWidth = 480;
+    const defaultHeight = 400;
+    const defaultX = 100;
+    const defaultY = 100;
+    const defaultOpacity = isWindows ? 0.95 : 1.0;
+
     mainWindow = new BrowserWindow({
-        width: 480,
-        height: 400,
+        width: savedState?.width || defaultWidth,
+        height: savedState?.height || defaultHeight,
         frame: false,         // No window frame
         transparent: !isWindows,    // Disable transparency on Windows for better visibility
         alwaysOnTop: true,    // Keep window on top
         skipTaskbar: true,    // Don't show in taskbar/dock
         resizable: false,
         backgroundColor: isWindows ? '#2d2d2d' : undefined, // Solid background for Windows
-        opacity: isWindows ? 0.95 : 1.0, // Slight transparency for Windows
+        opacity: defaultOpacity, // Will be set after window is ready
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'), // Main window preload
             contextIsolation: true,
             nodeIntegration: false
         },
         show: false, // Don't show immediately
-        x: 100, // Explicit positioning
-        y: 100
+        x: savedState?.x ?? defaultX,
+        y: savedState?.y ?? defaultY
     });
 
     // Attempt to prevent screen capture
@@ -222,8 +264,17 @@ function createMainWindow() {
 
     // Show gracefully when the UI is ready
     mainWindow.once('ready-to-show', () => {
+        // Restore saved opacity if available
+        if (savedState?.opacity !== undefined) {
+            mainWindow.setOpacity(savedState.opacity);
+        }
+
         mainWindow.show();
-        mainWindow.center(); // Center on screen
+
+        // Only center if no saved position
+        if (!savedState?.x && !savedState?.y) {
+            mainWindow.center();
+        }
 
         // Windows-specific fixes
         if (process.platform === 'win32') {
@@ -232,6 +283,10 @@ function createMainWindow() {
             mainWindow.moveTop();
         }
     });
+
+    // Save window state when moved or resized
+    mainWindow.on('move', debouncedSaveWindowState);
+    mainWindow.on('resize', debouncedSaveWindowState);
 
     // Cleanup reference on close
     mainWindow.on('closed', () => {
@@ -328,6 +383,7 @@ function registerShortcuts() {
         'CommandOrControl+1': () => switchToProvider('openai'),
         'CommandOrControl+2': () => switchToProvider('gemini'),
         'CommandOrControl+3': () => switchToProvider('deepseek'),
+        'CommandOrControl+4': () => switchToProvider('claude'),
         // --- Toggle DeepSeek Reasoning ---
         'CommandOrControl+Shift+R': () => toggleDeepSeekReasoning(),
         // --- Cycle OpenAI Models ---
@@ -399,6 +455,8 @@ function adjustOpacity(delta) {
     const newOpacity = Math.max(0.2, Math.min(1.0, currentOpacity + delta));
     mainWindow.setOpacity(newOpacity);
     console.log(`Adjusted opacity: ${newOpacity.toFixed(2)}`);
+    // Save the new opacity
+    debouncedSaveWindowState();
 }
 
 // --- Screenshot Capture Function ---
@@ -495,7 +553,7 @@ function cycleProvider() {
     }
 
     const currentProvider = store.get('apiProvider') || 'gemini';
-    const providers = ['openai', 'gemini', 'deepseek'];
+    const providers = ['openai', 'gemini', 'deepseek', 'claude'];
     const currentIndex = providers.indexOf(currentProvider);
     const nextIndex = (currentIndex + 1) % providers.length;
     const nextProvider = providers[nextIndex];
@@ -632,6 +690,22 @@ function cycleOpenAIModel() {
     }
 }
 
+// --- Single Instance Lock ---
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+    console.log('Another instance is already running. Quitting...');
+    app.quit();
+} else {
+    // Handle second instance attempt - focus existing window
+    app.on('second-instance', () => {
+        if (mainWindow) {
+            if (!mainWindow.isVisible()) mainWindow.show();
+            mainWindow.focus();
+        }
+    });
+}
+
 // --- App Ready Event ---
 app.whenReady().then(async () => {
     if (process.platform === 'darwin') {
@@ -688,6 +762,8 @@ app.whenReady().then(async () => {
 
 // --- App Quitting Event ---
 app.on('will-quit', () => {
+    // Save window state one final time before quitting
+    saveWindowState();
     globalShortcut.unregisterAll(); // Unregister all shortcuts on quit
     console.log("Unregistered all global shortcuts.");
 });
@@ -771,6 +847,7 @@ ipcMain.handle('get-settings', async (event) => {
         geminiKey: store.get('googleApiKey') || '',
         openaiKey: store.get('openaiApiKey') || '',
         deepseekKey: store.get('deepseekApiKey') || '',
+        claudeKey: store.get('claudeApiKey') || '',
         openaiModel: store.get('openaiModel') || 'o4-mini',
         enableReasoning: store.get('enableReasoning') || false,
         deepseekUseReasoning: store.get('deepseekUseReasoning') || false
@@ -802,6 +879,10 @@ ipcMain.handle('save-settings', async (event, settings) => {
             store.set('deepseekApiKey', settings.deepseekKey.trim());
         }
 
+        if (settings.claudeKey) {
+            store.set('claudeApiKey', settings.claudeKey.trim());
+        }
+
         if (settings.openaiModel) {
             store.set('openaiModel', settings.openaiModel);
         }
@@ -822,6 +903,56 @@ ipcMain.handle('save-settings', async (event, settings) => {
         return { success: true };
     } catch (error) {
         console.error('Error saving settings:', error);
+        return { success: false, error: error.message };
+    }
+});
+
+// --- IPC Handler: Get History ---
+const MAX_HISTORY_ENTRIES = 50;
+
+ipcMain.handle('get-history', async () => {
+    if (!store) {
+        return [];
+    }
+    return store.get('responseHistory') || [];
+});
+
+// --- IPC Handler: Save History Entry ---
+ipcMain.handle('save-history-entry', async (event, entry) => {
+    if (!store) {
+        return { success: false, error: 'Store not initialized' };
+    }
+    try {
+        const history = store.get('responseHistory') || [];
+        // Add new entry with timestamp
+        const newEntry = {
+            ...entry,
+            id: Date.now(),
+            timestamp: new Date().toISOString()
+        };
+        history.push(newEntry);
+        // Keep only the last MAX_HISTORY_ENTRIES
+        if (history.length > MAX_HISTORY_ENTRIES) {
+            history.splice(0, history.length - MAX_HISTORY_ENTRIES);
+        }
+        store.set('responseHistory', history);
+        return { success: true, id: newEntry.id };
+    } catch (error) {
+        console.error('Error saving history entry:', error);
+        return { success: false, error: error.message };
+    }
+});
+
+// --- IPC Handler: Clear History ---
+ipcMain.handle('clear-history', async () => {
+    if (!store) {
+        return { success: false, error: 'Store not initialized' };
+    }
+    try {
+        store.set('responseHistory', []);
+        return { success: true };
+    } catch (error) {
+        console.error('Error clearing history:', error);
         return { success: false, error: error.message };
     }
 });
@@ -983,6 +1114,8 @@ ipcMain.handle('call-gemini', async (event, payload) => {
         apiKey = store.get('googleApiKey');
     } else if (provider === 'deepseek') {
         apiKey = store.get('deepseekApiKey');
+    } else if (provider === 'claude') {
+        apiKey = store.get('claudeApiKey');
     } else {
         apiKey = store.get('openaiApiKey');
     }
@@ -1025,6 +1158,8 @@ ipcMain.handle('call-gemini', async (event, payload) => {
             return await callGeminiApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot);
         } else if (provider === 'deepseek') {
             return await callDeepSeekApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot, requestedModel);
+        } else if (provider === 'claude') {
+            return await callClaudeApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot);
         } else {
             return await callOpenAIApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot, requestedModel);
         }
@@ -1414,6 +1549,102 @@ async function callDeepSeekApi(apiKey, textInput, customInstructions, screenshot
     }
 }
 
+// Function to call the Claude API (Anthropic)
+async function callClaudeApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot) {
+    console.log('Calling Claude API...');
+
+    // Create request headers
+    const headers = {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
+    };
+
+    // Build the user message content
+    const contentParts = [];
+
+    // Add image if present (Claude supports vision)
+    if (hasScreenshot && screenshotData) {
+        // Extract base64 data and media type from data URL
+        const matches = screenshotData.match(/^data:([^;]+);base64,(.+)$/);
+        if (matches) {
+            const mediaType = matches[1];
+            const base64Data = matches[2];
+            contentParts.push({
+                type: 'image',
+                source: {
+                    type: 'base64',
+                    media_type: mediaType,
+                    data: base64Data
+                }
+            });
+        }
+    }
+
+    // Add text content
+    let textContent = '';
+    if (textInput) {
+        textContent += textInput;
+    }
+    if (customInstructions) {
+        textContent += (textContent ? '\n\n' : '') + `Custom Instructions: ${customInstructions}`;
+    }
+    if (!textContent.trim()) {
+        textContent = 'Hello, please respond.';
+    }
+
+    contentParts.push({
+        type: 'text',
+        text: textContent
+    });
+
+    // Build request body
+    const requestBody = {
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4096,
+        messages: [
+            {
+                role: 'user',
+                content: contentParts
+            }
+        ]
+    };
+
+    console.log('Sending API request to Claude');
+
+    try {
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(requestBody)
+        });
+
+        console.log('Claude API response status:', response.status);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Claude API error response:', errorText);
+            return { error: `API Error (${response.status}): ${errorText}` };
+        }
+
+        const responseData = await response.json();
+        console.log('Claude API response data:', JSON.stringify(responseData, null, 2));
+
+        // Extract the text from the response
+        if (responseData.content && responseData.content.length > 0) {
+            const textBlock = responseData.content.find(block => block.type === 'text');
+            if (textBlock && textBlock.text) {
+                return { success: textBlock.text.trim() };
+            }
+        }
+
+        return { error: 'No valid response from Claude' };
+    } catch (error) {
+        console.error('Error calling Claude API:', error);
+        return { error: `Error: ${error.message}` };
+    }
+}
+
 // Helper function to get API key based on current provider
 function getApiKey() {
     const provider = store.get('apiProvider') || 'gemini';
@@ -1421,6 +1652,8 @@ function getApiKey() {
         return store.get('googleApiKey');
     } else if (provider === 'deepseek') {
         return store.get('deepseekApiKey');
+    } else if (provider === 'claude') {
+        return store.get('claudeApiKey');
     } else {
         return store.get('openaiApiKey');
     }

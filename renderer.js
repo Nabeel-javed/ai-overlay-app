@@ -16,6 +16,9 @@ const instructionsTextArea = document.getElementById('instructions-textarea');
 // Add settings button reference if it exists in the HTML
 const settingsButton = document.getElementById('settings-button');
 
+// Copy response button reference
+const copyResponseButton = document.getElementById('copy-response');
+
 // Add reasoning checkbox and label references
 const reasoningCheckbox = document.getElementById('enable-reasoning-main');
 const reasoningLabel = document.getElementById('reasoning-label');
@@ -35,6 +38,11 @@ let currentScreenshot = null;
 let currentModel = 'o4-mini'; // Default to o4-mini
 // Variable to store the current provider
 let currentProvider = 'gemini'; // Default to Gemini
+
+// History state
+let history = [];
+let historyIndex = -1; // -1 means we're at the current (new) entry
+const historyIndicator = document.getElementById('history-indicator');
 
 // --- REMOVED: IPC Listener for clipboard text ---
 // window.electronAPI.onSetInputText((text) => { ... });
@@ -223,6 +231,32 @@ if (settingsButton) {
     });
 }
 
+// --- Event Listener: Copy Response Button ---
+if (copyResponseButton) {
+    copyResponseButton.addEventListener('click', async () => {
+        const responseText = responseTextArea.innerText.trim();
+        if (!responseText) {
+            showNotification('Nothing to copy', 'info');
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(responseText);
+            // Visual feedback
+            copyResponseButton.classList.add('copied');
+            copyResponseButton.textContent = 'Copied!';
+            showNotification('Copied to clipboard', 'success');
+            // Reset button after 2 seconds
+            setTimeout(() => {
+                copyResponseButton.classList.remove('copied');
+                copyResponseButton.textContent = 'Copy';
+            }, 2000);
+        } catch (error) {
+            console.error('Failed to copy:', error);
+            showNotification('Failed to copy', 'error');
+        }
+    });
+}
+
 // --- Event Listener: Provider Buttons ---
 providerButtons.forEach(button => {
     button.addEventListener('click', () => {
@@ -380,39 +414,193 @@ function enhanceMathNotation(text) {
     return enhanced;
 }
 
-// Function to show temporary provider notification
-function showProviderNotification(message) {
-    // Create or get existing notification element
-    let notification = document.getElementById('provider-notification');
+// Notification ID counter for stacking
+let notificationCounter = 0;
 
-    if (!notification) {
-        notification = document.createElement('div');
-        notification.id = 'provider-notification';
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background-color: var(--accent-color);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 500;
-            z-index: 1000;
-            opacity: 0;
-            transition: opacity 0.3s ease-in-out;
-            pointer-events: none;
-        `;
-        document.body.appendChild(notification);
+// Function to show temporary notification with type support
+// Types: 'success' (default), 'info', 'warning', 'error'
+function showNotification(message, type = 'success', duration = 2000) {
+    const id = ++notificationCounter;
+
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.id = `notification-${id}`;
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+
+    // Calculate vertical position based on existing notifications
+    const existingNotifications = document.querySelectorAll('.notification.show');
+    let topOffset = 20;
+    existingNotifications.forEach(n => {
+        topOffset += n.offsetHeight + 10;
+    });
+    notification.style.top = `${topOffset}px`;
+
+    document.body.appendChild(notification);
+
+    // Trigger show animation
+    requestAnimationFrame(() => {
+        notification.classList.add('show');
+    });
+
+    // Hide and remove after duration
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            notification.remove();
+        }, 300);
+    }, duration);
+}
+
+// Wrapper for backwards compatibility
+function showProviderNotification(message) {
+    showNotification(message, 'success', 2000);
+}
+
+// --- History Management Functions ---
+
+// Load history from storage on startup
+async function loadHistory() {
+    try {
+        history = await window.electronAPI.getHistory();
+        historyIndex = -1; // Start at current (new) entry
+        updateHistoryIndicator();
+        console.log(`Loaded ${history.length} history entries`);
+    } catch (error) {
+        console.error('Failed to load history:', error);
+        history = [];
+    }
+}
+
+// Save a new history entry
+async function saveHistoryEntry(input, response, screenshot = null, instructions = '') {
+    const entry = {
+        input,
+        response,
+        screenshot,
+        instructions,
+        provider: currentProvider,
+        model: currentModel
+    };
+    try {
+        const result = await window.electronAPI.saveHistoryEntry(entry);
+        if (result.success) {
+            // Add to local history array
+            history.push({
+                ...entry,
+                id: result.id,
+                timestamp: new Date().toISOString()
+            });
+            historyIndex = -1; // Reset to current
+            updateHistoryIndicator();
+        }
+    } catch (error) {
+        console.error('Failed to save history entry:', error);
+    }
+}
+
+// Navigate to a specific history entry
+function navigateToHistoryEntry(index) {
+    if (history.length === 0) {
+        showNotification('No history available', 'info');
+        return;
     }
 
-    notification.textContent = message;
-    notification.style.opacity = '1';
+    // Clamp index to valid range
+    const newIndex = Math.max(-1, Math.min(history.length - 1, index));
 
-    // Hide after 2 seconds
-    setTimeout(() => {
-        notification.style.opacity = '0';
-    }, 2000);
+    if (newIndex === historyIndex) {
+        // Already at this position
+        if (newIndex === -1) {
+            showNotification('At current entry', 'info');
+        } else if (newIndex === 0) {
+            showNotification('At oldest entry', 'info');
+        }
+        return;
+    }
+
+    historyIndex = newIndex;
+
+    if (historyIndex === -1) {
+        // Show current/empty state
+        inputTextArea.value = '';
+        responseTextArea.innerHTML = '';
+        removeScreenshot();
+        showNotification('Current entry', 'info');
+    } else {
+        // Show historical entry
+        const entry = history[historyIndex];
+        inputTextArea.value = entry.input || '';
+        responseTextArea.innerHTML = entry.response || '';
+
+        // Handle screenshot if present
+        if (entry.screenshot) {
+            currentScreenshot = entry.screenshot;
+            displayScreenshot(entry.screenshot);
+            if (entry.instructions) {
+                instructionsTextArea.value = entry.instructions;
+            }
+        } else {
+            removeScreenshot();
+        }
+
+        // Trigger MathJax typesetting
+        if (typeof window.typeset === 'function') {
+            setTimeout(() => window.typeset(), 100);
+        }
+    }
+
+    updateHistoryIndicator();
+    updateSubmitButton();
+}
+
+// Navigate to previous (older) history entry
+function navigateToPreviousEntry() {
+    if (history.length === 0) {
+        showNotification('No history available', 'info');
+        return;
+    }
+
+    if (historyIndex === history.length - 1) {
+        showNotification('At oldest entry', 'info');
+        return;
+    }
+
+    // Move towards older entries (higher index)
+    navigateToHistoryEntry(historyIndex + 1);
+}
+
+// Navigate to next (newer) history entry
+function navigateToNextEntry() {
+    if (historyIndex === -1) {
+        showNotification('At current entry', 'info');
+        return;
+    }
+
+    // Move towards newer entries (lower index, -1 is current)
+    navigateToHistoryEntry(historyIndex - 1);
+}
+
+// Update the history indicator UI
+function updateHistoryIndicator() {
+    if (!historyIndicator) return;
+
+    if (history.length === 0) {
+        historyIndicator.classList.add('hidden');
+        return;
+    }
+
+    historyIndicator.classList.remove('hidden');
+
+    if (historyIndex === -1) {
+        historyIndicator.textContent = `${history.length} saved`;
+        historyIndicator.classList.remove('active');
+    } else {
+        // Show position as "X of Y" (1-indexed for user friendliness)
+        const position = history.length - historyIndex;
+        historyIndicator.textContent = `${position}/${history.length}`;
+        historyIndicator.classList.add('active');
+    }
 }
 
 // Function to handle AI submission
@@ -486,6 +674,14 @@ async function submitToAI() {
                     console.error('MathJax typeset function not found');
                 }
             }, 100);
+
+            // Save to history
+            saveHistoryEntry(
+                inputText,
+                processedContent,
+                currentScreenshot,
+                customInstructions
+            );
         } else {
             responseTextArea.innerHTML = `Error: ${result.error || 'An unknown error occurred.'}`;
         }
@@ -541,6 +737,28 @@ document.addEventListener('keydown', (event) => {
     const activeElement = document.activeElement;
     const isTyping = activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT';
 
+    // Copy response shortcut (Ctrl+Shift+C) - works even when typing
+    if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'c') {
+        event.preventDefault();
+        if (copyResponseButton) {
+            copyResponseButton.click();
+        }
+        return;
+    }
+
+    // History navigation shortcuts (Ctrl+Up/Down) - works even when typing
+    if ((event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey) {
+        if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            navigateToPreviousEntry();
+            return;
+        } else if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            navigateToNextEntry();
+            return;
+        }
+    }
+
     // Scroll response area shortcuts (Page Up/Down, Arrow keys with modifiers)
     if (!isTyping) {
         let scrollAmount = 0;
@@ -589,6 +807,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Get current provider and model from settings
     await getCurrentProviderAndModelFromSettings();
+
+    // Load history from storage
+    await loadHistory();
 
     // Get initial reasoning state and set checkbox
     if (reasoningCheckbox && reasoningLabel) {

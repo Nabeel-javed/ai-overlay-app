@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const geminiRadio = document.getElementById('gemini');
     const openaiRadio = document.getElementById('openai');
     const deepseekRadio = document.getElementById('deepseek');
+    const claudeRadio = document.getElementById('claude');
     const providerHelp = document.getElementById('provider-help');
     const geminiLink = document.getElementById('gemini-link');
 
@@ -23,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     geminiRadio.addEventListener('change', updateHelpText);
     openaiRadio.addEventListener('change', updateHelpText);
     deepseekRadio.addEventListener('change', updateHelpText);
+    claudeRadio.addEventListener('change', updateHelpText);
 
     function updateHelpText() {
         if (geminiRadio.checked) {
@@ -31,6 +33,8 @@ document.addEventListener('DOMContentLoaded', () => {
             selectedProvider = 'openai';
         } else if (deepseekRadio.checked) {
             selectedProvider = 'deepseek';
+        } else if (claudeRadio.checked) {
+            selectedProvider = 'claude';
         }
 
         if (selectedProvider === 'gemini') {
@@ -54,6 +58,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.preventDefault();
                 window.electronAPI.openExternalLink('https://platform.deepseek.com/api_keys');
             });
+        } else if (selectedProvider === 'claude') {
+            providerHelp.innerHTML = 'Claude API keys can be obtained from <a href="#" id="claude-link">Anthropic Console</a>.';
+            const claudeLink = document.getElementById('claude-link');
+            claudeLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.electronAPI.openExternalLink('https://console.anthropic.com/settings/keys');
+            });
         }
     }
 
@@ -72,6 +83,8 @@ document.addEventListener('DOMContentLoaded', () => {
             selectedProvider = 'openai';
         } else if (deepseekRadio.checked) {
             selectedProvider = 'deepseek';
+        } else if (claudeRadio.checked) {
+            selectedProvider = 'claude';
         }
 
         try {

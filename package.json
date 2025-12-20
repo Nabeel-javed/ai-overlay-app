@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "electron-store": "^10.0.1",
+    "mathjax": "^3.2.2",
     "node-fetch": "^2.7.0",
     "node-machine-id": "^1.1.12"
   },

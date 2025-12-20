@@ -7,9 +7,9 @@
         content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://cdn.jsdelivr.net; font-src 'self' data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; img-src 'self' data: https://cdn.jsdelivr.net;">
     <link rel="stylesheet" href="style.css">
     <title>Spectro</title>
-    <!-- MathJax for rendering mathematical notation -->
+    <!-- MathJax for rendering mathematical notation (loaded locally for faster performance) -->
     <script type="text/javascript" id="MathJax-script" async
-        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+        src="./node_modules/mathjax/es5/tex-mml-chtml.js">
         </script>
     <script>
         window.MathJax = {
@@ -70,6 +70,7 @@
                         <button class="provider-btn active" data-provider="openai">OpenAI</button>
                         <button class="provider-btn" data-provider="gemini">Gemini</button>
                         <button class="provider-btn" data-provider="deepseek">DeepSeek</button>
+                        <button class="provider-btn" data-provider="claude">Claude</button>
                     </div>
                 </div>
 
@@ -93,7 +94,7 @@
             </div>
             <div id="shortcut-hints">
                 <div>Ctrl+Shift+S to capture screenshot</div>
-                <div>Ctrl+1/2/3 for OpenAI/Gemini/DeepSeek</div>
+                <div>Ctrl+1/2/3/4 for OpenAI/Gemini/DeepSeek/Claude</div>
                 <div>Ctrl+Shift+P to cycle providers</div>
                 <div>Ctrl+Shift+R to toggle DeepSeek R1</div>
                 <div>Ctrl+R to reset tool</div>
@@ -104,7 +105,13 @@
         </div>
 
         <div class="section">
-            <label for="response-textarea">AI Response:</label>
+            <div class="response-header">
+                <label for="response-textarea">AI Response:</label>
+                <div class="response-controls">
+                    <span id="history-indicator" class="history-indicator hidden" title="Use Ctrl+Up/Down to navigate history"></span>
+                    <button id="copy-response" class="icon-button" title="Copy to clipboard (Ctrl+Shift+C)">Copy</button>
+                </div>
+            </div>
             <div id="response-textarea" class="text-area response-area"
                 style="overflow-y: auto; white-space: pre-wrap;"></div>
         </div>

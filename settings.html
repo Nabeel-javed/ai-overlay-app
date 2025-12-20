@@ -166,6 +166,7 @@
                 <button id="gemini-provider" class="provider-button active">Google Gemini</button>
                 <button id="openai-provider" class="provider-button">OpenAI</button>
                 <button id="deepseek-provider" class="provider-button">DeepSeek</button>
+                <button id="claude-provider" class="provider-button">Claude</button>
             </div>
             <input type="hidden" id="provider-select" value="gemini">
         </div>
@@ -194,6 +195,12 @@
                     <label for="deepseek-reasoning">Enable R1 Reasoning Model</label>
                 </div>
                 <div class="info-text">R1 model provides enhanced reasoning capabilities but may be slower</div>
+            </div>
+
+            <div id="claude-settings">
+                <label for="claude-key">Claude API Key:</label>
+                <input type="password" id="claude-key" placeholder="Enter your Claude API key">
+                <div class="info-text">Get your API key from Anthropic Console</div>
             </div>
         </div>
 
