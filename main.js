@@ -581,7 +581,7 @@ function switchToProvider(provider) {
         return;
     }
 
-    if (!['openai', 'gemini', 'deepseek'].includes(provider)) {
+    if (!['openai', 'gemini', 'deepseek', 'claude'].includes(provider)) {
         console.error('Invalid provider:', provider);
         return;
     }
@@ -1066,7 +1066,7 @@ ipcMain.on('select-provider', (event, provider) => {
         console.error('Store not initialized, cannot select provider');
         return;
     }
-    if (provider && ['openai', 'gemini', 'deepseek'].includes(provider)) {
+    if (provider && ['openai', 'gemini', 'deepseek', 'claude'].includes(provider)) {
         console.log('Selecting provider:', provider);
         store.set('apiProvider', provider);
 
