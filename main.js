@@ -21,6 +21,9 @@ let settingsWindow; // Add settings window reference
 let store; // Declare globally, initialize later
 const MOVE_STEP = 20; // Pixels to move the window per hotkey press
 
+// Conversation history for multi-turn chat
+let conversationHistory = [];
+
 // --- Debounce utility for window state saving ---
 function debounce(func, wait) {
     let timeout;
@@ -528,6 +531,10 @@ function resizeWindowForScreenshot(hasScreenshot) {
 // --- Function to reset the tool ---
 function resetTool() {
     if (!mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible()) return;
+
+    // Clear conversation history
+    conversationHistory = [];
+    console.log('Conversation history cleared');
 
     // Resize window back to original size (in case it was enlarged for screenshot)
     resizeWindowForScreenshot(false);
@@ -1178,7 +1185,7 @@ ipcMain.handle('call-gemini', async (event, payload) => {
 // Function to call the Gemini API
 async function callGeminiApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot) {
     const model = 'gemini-2.5-flash';
-    console.log(`API Request: Gemini (${model})`);
+    console.log(`API Request: Gemini (${model}) - History: ${conversationHistory.length} messages`);
 
     // Base URL for the Gemini API
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
@@ -1188,42 +1195,57 @@ async function callGeminiApi(apiKey, textInput, customInstructions, screenshotDa
         'Content-Type': 'application/json'
     };
 
+    // Build the current user message parts
+    const currentUserParts = [];
+
+    // Add text if provided
+    if (textInput) {
+        currentUserParts.push({ text: textInput });
+    }
+
+    // Add custom instructions if provided
+    if (customInstructions) {
+        currentUserParts.push({ text: `Custom Instructions: ${customInstructions}` });
+    }
+
+    // Add screenshot data if available
+    if (hasScreenshot && screenshotData) {
+        currentUserParts.push({
+            inlineData: {
+                data: screenshotData.split(',')[1],
+                mimeType: 'image/png'
+            }
+        });
+    }
+
+    // Build contents array with conversation history
+    const contents = [];
+
+    // Add previous conversation history (Gemini format)
+    for (const msg of conversationHistory) {
+        if (msg.provider === 'gemini') {
+            contents.push({
+                role: msg.role,
+                parts: [{ text: msg.content }]
+            });
+        }
+    }
+
+    // Add current user message
+    contents.push({
+        role: 'user',
+        parts: currentUserParts
+    });
+
     // Build the request body
     const requestBody = {
-        contents: [{
-            parts: []
-        }],
+        contents: contents,
         generationConfig: {
             temperature: 0.7,
             topK: 32,
             topP: 1,
         }
     };
-
-    // Add text part if provided
-    if (textInput) {
-        requestBody.contents[0].parts.push({
-            text: textInput
-        });
-    }
-
-    // Add custom instructions if provided
-    if (customInstructions) {
-        requestBody.contents[0].parts.push({
-            text: `Custom Instructions: ${customInstructions}`
-        });
-    }
-
-    // Add screenshot data if available
-    if (hasScreenshot && screenshotData) {
-        // Add the screenshot as an image part
-        requestBody.contents[0].parts.push({
-            inlineData: {
-                data: screenshotData.split(',')[1], // Remove the data:image/png;base64, prefix
-                mimeType: 'image/png'
-            }
-        });
-    }
 
     // Call the Gemini API
     const response = await fetch(`${apiUrl}?key=${apiKey}`, {
@@ -1248,7 +1270,12 @@ async function callGeminiApi(apiKey, textInput, customInstructions, screenshotDa
         responseData.candidates[0].content.parts.length > 0) {
         const textResponse = responseData.candidates[0].content.parts[0].text;
         console.log(`API Response: Gemini (${model}) - Success`);
-        // Send raw response with LaTeX intact for proper rendering
+
+        // Add to conversation history
+        const userMessage = textInput + (customInstructions ? `\n${customInstructions}` : '');
+        conversationHistory.push({ role: 'user', content: userMessage, provider: 'gemini' });
+        conversationHistory.push({ role: 'model', content: textResponse, provider: 'gemini' });
+
         return { success: textResponse };
     } else {
         console.log(`API Response: Gemini (${model}) - No valid response`);
@@ -1265,7 +1292,7 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
     const modelConfig = MODEL_CONFIG[selectedModel];
     const apiUrl = modelConfig.baseUrl;
 
-    console.log(`API Request: OpenAI (${modelConfig.modelName})`);
+    console.log(`API Request: OpenAI (${modelConfig.modelName}) - History: ${conversationHistory.length} messages`);
 
     // Check if reasoning is enabled - only applicable for o4-mini model
     const enableReasoning = (selectedModel === 'o4-mini') && (store.get('enableReasoning') || false);
@@ -1274,7 +1301,6 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
     const headers = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
-        // 'OpenAI-Beta': 'responses-2024-07-23'  // Required header for responses API
     };
 
     // Define the system instructions
@@ -1301,28 +1327,36 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
 
     // Add screenshot if available
     if (hasScreenshot && screenshotData) {
-        // Format image according to OpenAI API requirements
-        // The screenshotData should already be a data URL like: data:image/png;base64,ABC123...
         userMessageContent.push({
             type: "input_image",
-            image_url: screenshotData  // Pass the data URL directly as a string, not as an object
+            image_url: screenshotData
         });
-
     }
-
-    // Create the input message array
-    const inputMessages = [
-        {
-            role: "user",
-            content: userMessageContent
-        }
-    ];
 
     // Build request body - use different format based on model
     let requestBody;
+    let userMessageText = textInput + (customInstructions ? `\n${customInstructions}` : '');
 
     if (selectedModel === '4.1') {
         // Use Responses API format for GPT-4.1
+        const inputMessages = [];
+
+        // Add conversation history
+        for (const msg of conversationHistory) {
+            if (msg.provider === 'openai') {
+                inputMessages.push({
+                    role: msg.role,
+                    content: [{ type: "input_text", text: msg.content }]
+                });
+            }
+        }
+
+        // Add current user message
+        inputMessages.push({
+            role: "user",
+            content: userMessageContent
+        });
+
         requestBody = {
             model: modelConfig.modelName,
             instructions: systemInstructions,
@@ -1337,33 +1371,38 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
             }
         ];
 
-        // Convert input messages to standard format
-        for (const inputMsg of inputMessages) {
-            if (inputMsg.role === "user") {
-                const userMessage = {
-                    role: "user",
-                    content: []
-                };
-
-                for (const contentItem of inputMsg.content) {
-                    if (contentItem.type === "input_text") {
-                        userMessage.content.push({
-                            type: "text",
-                            text: contentItem.text
-                        });
-                    } else if (contentItem.type === "input_image") {
-                        userMessage.content.push({
-                            type: "image_url",
-                            image_url: {
-                                url: contentItem.image_url
-                            }
-                        });
-                    }
-                }
-
-                messages.push(userMessage);
+        // Add conversation history
+        for (const msg of conversationHistory) {
+            if (msg.provider === 'openai') {
+                messages.push({
+                    role: msg.role,
+                    content: msg.content
+                });
             }
         }
+
+        // Build current user message content
+        const currentUserContent = [];
+        for (const contentItem of userMessageContent) {
+            if (contentItem.type === "input_text") {
+                currentUserContent.push({
+                    type: "text",
+                    text: contentItem.text
+                });
+            } else if (contentItem.type === "input_image") {
+                currentUserContent.push({
+                    type: "image_url",
+                    image_url: {
+                        url: contentItem.image_url
+                    }
+                });
+            }
+        }
+
+        messages.push({
+            role: "user",
+            content: currentUserContent
+        });
 
         // Set temperature based on model - o4-mini only supports temperature 1
         const temperature = (selectedModel === 'o4-mini') ? 1 : 0.7;
@@ -1377,17 +1416,8 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
 
     // Add reasoning only for o4-mini model if enabled
     if (selectedModel === 'o4-mini' && enableReasoning) {
-        if (selectedModel === '4.1') {
-            requestBody.reasoning = {
-                effort: "high"
-            };
-        } else {
-            // For standard chat completions, reasoning might be handled differently
-            // This depends on OpenAI's implementation for the o4-mini model
-            requestBody.reasoning = true;
-        }
+        requestBody.reasoning = true;
     }
-
 
     // Call the OpenAI API
     const response = await fetch(apiUrl, {
@@ -1398,8 +1428,6 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
 
     // Parse the response
     const responseData = await response.json();
-
-    // Log the response for debugging
 
     // Check for errors in the response
     if (!response.ok) {
@@ -1421,6 +1449,9 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
                     for (const contentItem of item.content) {
                         if (contentItem.type === 'output_text') {
                             const textContent = contentItem.text;
+                            // Add to conversation history
+                            conversationHistory.push({ role: 'user', content: userMessageText, provider: 'openai' });
+                            conversationHistory.push({ role: 'assistant', content: textContent.trim(), provider: 'openai' });
                             return { success: textContent.trim() };
                         }
                     }
@@ -1435,6 +1466,9 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
         const choice = responseData.choices[0];
         if (choice.message && choice.message.content) {
             const textContent = choice.message.content;
+            // Add to conversation history
+            conversationHistory.push({ role: 'user', content: userMessageText, provider: 'openai' });
+            conversationHistory.push({ role: 'assistant', content: textContent.trim(), provider: 'openai' });
             return { success: textContent.trim() };
         } else {
             return { error: 'No content in the response message' };
@@ -1452,7 +1486,7 @@ async function callDeepSeekApi(apiKey, textInput, customInstructions, screenshot
     // Select model based on reasoning setting
     const model = useReasoning ? 'deepseek-reasoner' : 'deepseek-chat';
 
-    console.log(`API Request: DeepSeek (${model})`);
+    console.log(`API Request: DeepSeek (${model}) - History: ${conversationHistory.length} messages`);
 
     // Create request headers
     const headers = {
@@ -1483,17 +1517,29 @@ async function callDeepSeekApi(apiKey, textInput, customInstructions, screenshot
         userContent = 'Hello, please respond.';
     }
 
-    // Create messages array (simplified for DeepSeek compatibility)
+    // Create messages array with conversation history
     const messages = [
         {
             role: "system",
             content: "You are a helpful assistant. Provide concise, accurate responses."
-        },
-        {
-            role: "user",
-            content: userContent
         }
     ];
+
+    // Add conversation history
+    for (const msg of conversationHistory) {
+        if (msg.provider === 'deepseek') {
+            messages.push({
+                role: msg.role,
+                content: msg.content
+            });
+        }
+    }
+
+    // Add current user message
+    messages.push({
+        role: "user",
+        content: userContent
+    });
 
     // Build request body
     const requestBody = {
@@ -1501,7 +1547,6 @@ async function callDeepSeekApi(apiKey, textInput, customInstructions, screenshot
         messages: messages,
         temperature: 0.7
     };
-
 
     try {
         // Call the DeepSeek API
@@ -1511,11 +1556,8 @@ async function callDeepSeekApi(apiKey, textInput, customInstructions, screenshot
             body: JSON.stringify(requestBody)
         });
 
-        // Log the response for debugging
-
         // Check for errors in the response first
         if (!response.ok) {
-            // Try to get error text
             const errorText = await response.text();
             console.error('DeepSeek API error response:', errorText);
             return { error: `API Error (${response.status}): ${errorText}` };
@@ -1533,13 +1575,15 @@ async function callDeepSeekApi(apiKey, textInput, customInstructions, screenshot
             return { error: `Invalid response format from DeepSeek API` };
         }
 
-
         // Extract the text from the response
         if (responseData.choices && responseData.choices.length > 0) {
             const choice = responseData.choices[0];
             if (choice.message && choice.message.content) {
                 const textContent = choice.message.content;
                 console.log(`API Response: DeepSeek (${model}) - Success`);
+                // Add to conversation history
+                conversationHistory.push({ role: 'user', content: userContent, provider: 'deepseek' });
+                conversationHistory.push({ role: 'assistant', content: textContent.trim(), provider: 'deepseek' });
                 return { success: textContent.trim() };
             }
         }
@@ -1558,7 +1602,7 @@ async function callClaudeApi(apiKey, textInput, customInstructions, screenshotDa
     const useOpus = store.get('claudeUseOpus') || false;
     const model = useOpus ? 'claude-opus-4-5-20251101' : 'claude-sonnet-4-5-20250929';
 
-    console.log(`API Request: Claude (${model})`);
+    console.log(`API Request: Claude (${model}) - History: ${conversationHistory.length} messages`);
 
     // Create request headers
     const headers = {
@@ -1572,7 +1616,6 @@ async function callClaudeApi(apiKey, textInput, customInstructions, screenshotDa
 
     // Add image if present (Claude supports vision)
     if (hasScreenshot && screenshotData) {
-        // Extract base64 data and media type from data URL
         const matches = screenshotData.match(/^data:([^;]+);base64,(.+)$/);
         if (matches) {
             const mediaType = matches[1];
@@ -1605,18 +1648,31 @@ async function callClaudeApi(apiKey, textInput, customInstructions, screenshotDa
         text: textContent
     });
 
+    // Build messages array with conversation history
+    const messages = [];
+
+    // Add conversation history
+    for (const msg of conversationHistory) {
+        if (msg.provider === 'claude') {
+            messages.push({
+                role: msg.role,
+                content: msg.content
+            });
+        }
+    }
+
+    // Add current user message
+    messages.push({
+        role: 'user',
+        content: contentParts
+    });
+
     // Build request body
     const requestBody = {
         model: model,
         max_tokens: 4096,
-        messages: [
-            {
-                role: 'user',
-                content: contentParts
-            }
-        ]
+        messages: messages
     };
-
 
     try {
         const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1624,7 +1680,6 @@ async function callClaudeApi(apiKey, textInput, customInstructions, screenshotDa
             headers: headers,
             body: JSON.stringify(requestBody)
         });
-
 
         if (!response.ok) {
             const errorText = await response.text();
@@ -1639,6 +1694,9 @@ async function callClaudeApi(apiKey, textInput, customInstructions, screenshotDa
             const textBlock = responseData.content.find(block => block.type === 'text');
             if (textBlock && textBlock.text) {
                 console.log(`API Response: Claude (${model}) - Success`);
+                // Add to conversation history
+                conversationHistory.push({ role: 'user', content: textContent, provider: 'claude' });
+                conversationHistory.push({ role: 'assistant', content: textBlock.text.trim(), provider: 'claude' });
                 return { success: textBlock.text.trim() };
             }
         }
