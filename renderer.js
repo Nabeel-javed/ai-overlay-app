@@ -363,6 +363,20 @@ window.electronAPI.onClaudeOpusChanged((enabled) => {
     }
 });
 
+// --- IPC Listener for Extended Chat mode changes (from keyboard shortcut) ---
+window.electronAPI.onExtendedChatChanged((enabled) => {
+    extendedChatEnabled = enabled;
+    if (extendedChatToggle) {
+        if (enabled) {
+            extendedChatToggle.classList.add('extended-active');
+            extendedChatToggle.title = 'Extended Chat ON: Keeping all messages';
+        } else {
+            extendedChatToggle.classList.remove('extended-active');
+            extendedChatToggle.title = 'Extended Chat: Keep all messages (no auto-trim)';
+        }
+    }
+});
+
 // --- IPC Listener for OpenAI model changes ---
 window.electronAPI.onOpenAIModelChanged((model) => {
     currentModel = model;
