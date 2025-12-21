@@ -218,6 +218,18 @@ button {
     border-color: var(--accent-color);
 }
 
+/* Extended chat toggle active state */
+.icon-button.extended-active {
+    background-color: #8B5CF6;
+    color: white;
+    border-color: #8B5CF6;
+}
+
+.icon-button.extended-active:hover {
+    background-color: #7C3AED;
+    border-color: #7C3AED;
+}
+
 /* Make response area flexible */
 #response-textarea {
     flex-grow: 1;

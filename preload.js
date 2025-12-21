@@ -92,6 +92,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Response history channels
   getHistory: () => ipcRenderer.invoke('get-history'),
   saveHistoryEntry: (entry) => ipcRenderer.invoke('save-history-entry', entry),
-  clearHistory: () => ipcRenderer.invoke('clear-history')
+  clearHistory: () => ipcRenderer.invoke('clear-history'),
+
+  // Extended chat mode (disable auto-trimming)
+  toggleExtendedChat: (enabled) => ipcRenderer.send('toggle-extended-chat', enabled),
+  getExtendedChatState: () => ipcRenderer.invoke('get-extended-chat-state'),
+  onExtendedChatChanged: (callback) => ipcRenderer.on('extended-chat-changed', (event, enabled) => callback(enabled))
 });
 

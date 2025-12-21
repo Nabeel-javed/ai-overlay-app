@@ -23,6 +23,23 @@ const MOVE_STEP = 20; // Pixels to move the window per hotkey press
 
 // Conversation history for multi-turn chat
 let conversationHistory = [];
+const MAX_CONVERSATION_MESSAGES = 20; // Keep last 20 messages (10 exchanges)
+let extendedChatMode = false; // When true, don't auto-trim
+
+// Automatically trim conversation history to prevent token limit errors
+function trimConversationHistory() {
+    // Skip trimming if extended chat mode is enabled
+    if (extendedChatMode) {
+        console.log(`Extended chat mode: keeping all ${conversationHistory.length} messages`);
+        return;
+    }
+
+    if (conversationHistory.length > MAX_CONVERSATION_MESSAGES) {
+        const removed = conversationHistory.length - MAX_CONVERSATION_MESSAGES;
+        conversationHistory = conversationHistory.slice(-MAX_CONVERSATION_MESSAGES);
+        console.log(`Conversation history trimmed: removed ${removed} old messages, keeping ${MAX_CONVERSATION_MESSAGES}`);
+    }
+}
 
 // --- Debounce utility for window state saving ---
 function debounce(func, wait) {
@@ -395,6 +412,8 @@ function registerShortcuts() {
         // --- Opacity Control Shortcuts ---
         'CommandOrControl+[': () => adjustOpacity(-0.05),
         'CommandOrControl+]': () => adjustOpacity(0.05),
+        // --- Toggle Extended Chat Mode ---
+        'CommandOrControl+E': () => toggleExtendedChatMode(),
     };
 
     for (const accelerator in shortcuts) {
@@ -1120,6 +1139,34 @@ ipcMain.handle('get-claude-opus-state', async (event) => {
     return store.get('claudeUseOpus') || false;
 });
 
+// --- Function to toggle extended chat mode via keyboard shortcut ---
+function toggleExtendedChatMode() {
+    extendedChatMode = !extendedChatMode;
+    console.log(`Extended chat mode: ${extendedChatMode ? 'enabled (no auto-trim)' : 'disabled (auto-trim at 20 messages)'}`);
+
+    // Notify renderer to update UI
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('extended-chat-changed', extendedChatMode);
+
+        // Show notification
+        mainWindow.webContents.send('provider-notification', {
+            provider: 'system',
+            message: `Extended Chat ${extendedChatMode ? 'ON' : 'OFF'}`
+        });
+    }
+}
+
+// --- IPC Listener: Toggle Extended Chat Mode ---
+ipcMain.on('toggle-extended-chat', (event, enabled) => {
+    extendedChatMode = !!enabled;
+    console.log(`Extended chat mode: ${extendedChatMode ? 'enabled (no auto-trim)' : 'disabled (auto-trim at 20 messages)'}`);
+});
+
+// --- IPC Handler: Get Extended Chat State ---
+ipcMain.handle('get-extended-chat-state', async (event) => {
+    return extendedChatMode;
+});
+
 // --- IPC Handler: Call AI API ---
 ipcMain.handle('call-gemini', async (event, payload) => {
     if (!store) {
@@ -1275,6 +1322,7 @@ async function callGeminiApi(apiKey, textInput, customInstructions, screenshotDa
         const userMessage = textInput + (customInstructions ? `\n${customInstructions}` : '');
         conversationHistory.push({ role: 'user', content: userMessage, provider: 'gemini' });
         conversationHistory.push({ role: 'model', content: textResponse, provider: 'gemini' });
+        trimConversationHistory();
 
         return { success: textResponse };
     } else {
@@ -1452,6 +1500,7 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
                             // Add to conversation history
                             conversationHistory.push({ role: 'user', content: userMessageText, provider: 'openai' });
                             conversationHistory.push({ role: 'assistant', content: textContent.trim(), provider: 'openai' });
+                            trimConversationHistory();
                             return { success: textContent.trim() };
                         }
                     }
@@ -1469,6 +1518,7 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
             // Add to conversation history
             conversationHistory.push({ role: 'user', content: userMessageText, provider: 'openai' });
             conversationHistory.push({ role: 'assistant', content: textContent.trim(), provider: 'openai' });
+            trimConversationHistory();
             return { success: textContent.trim() };
         } else {
             return { error: 'No content in the response message' };
@@ -1584,6 +1634,7 @@ async function callDeepSeekApi(apiKey, textInput, customInstructions, screenshot
                 // Add to conversation history
                 conversationHistory.push({ role: 'user', content: userContent, provider: 'deepseek' });
                 conversationHistory.push({ role: 'assistant', content: textContent.trim(), provider: 'deepseek' });
+                trimConversationHistory();
                 return { success: textContent.trim() };
             }
         }
@@ -1697,6 +1748,7 @@ async function callClaudeApi(apiKey, textInput, customInstructions, screenshotDa
                 // Add to conversation history
                 conversationHistory.push({ role: 'user', content: textContent, provider: 'claude' });
                 conversationHistory.push({ role: 'assistant', content: textBlock.text.trim(), provider: 'claude' });
+                trimConversationHistory();
                 return { success: textBlock.text.trim() };
             }
         }

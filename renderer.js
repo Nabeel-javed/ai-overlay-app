@@ -19,6 +19,10 @@ const settingsButton = document.getElementById('settings-button');
 // Copy response button reference
 const copyResponseButton = document.getElementById('copy-response');
 
+// Extended chat toggle button reference
+const extendedChatToggle = document.getElementById('extended-chat-toggle');
+let extendedChatEnabled = false;
+
 // Add reasoning checkbox and label references
 const reasoningCheckbox = document.getElementById('enable-reasoning-main');
 const reasoningLabel = document.getElementById('reasoning-label');
@@ -253,6 +257,27 @@ if (copyResponseButton) {
             console.error('Failed to copy:', error);
             showNotification('Failed to copy', 'error');
         }
+    });
+}
+
+// --- Event Listener: Extended Chat Toggle ---
+if (extendedChatToggle) {
+    extendedChatToggle.addEventListener('click', () => {
+        extendedChatEnabled = !extendedChatEnabled;
+
+        // Update UI
+        if (extendedChatEnabled) {
+            extendedChatToggle.classList.add('extended-active');
+            extendedChatToggle.title = 'Extended Chat ON: Keeping all messages';
+            showNotification('Extended Chat ON - no auto-trim', 'info');
+        } else {
+            extendedChatToggle.classList.remove('extended-active');
+            extendedChatToggle.title = 'Extended Chat: Keep all messages (no auto-trim)';
+            showNotification('Extended Chat OFF - auto-trim at 20 messages', 'info');
+        }
+
+        // Send state to main process
+        window.electronAPI.toggleExtendedChat(extendedChatEnabled);
     });
 }
 
