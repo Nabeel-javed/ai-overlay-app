@@ -77,20 +77,20 @@ const debouncedSaveWindowState = debounce(saveWindowState, 300);
 
 // Configuration for different models
 const MODEL_CONFIG = {
-    "4.1": {
-        modelName: "gpt-4.1",
-        baseUrl: "https://api.openai.com/v1/responses"
+    "terra": {
+        modelName: "gpt-5.6-terra",
+        baseUrl: "https://api.openai.com/v1/chat/completions"
     },
-    "o4-mini": {
-        modelName: "o4-mini-2025-04-16",
+    "sol": {
+        modelName: "gpt-5.6-sol",
         baseUrl: "https://api.openai.com/v1/chat/completions"
     },
     "deepseek-chat": {
-        modelName: "deepseek-chat",
+        modelName: "deepseek-v4-flash",
         baseUrl: "https://api.deepseek.com/v1/chat/completions"
     },
     "deepseek-reasoner": {
-        modelName: "deepseek-reasoner",
+        modelName: "deepseek-v4-pro",
         baseUrl: "https://api.deepseek.com/v1/chat/completions"
     }
 };
@@ -100,22 +100,13 @@ const PROVIDER_CONFIG = {
     openai: {
         name: "OpenAI",
         models: {
-            "4.1": {
-                modelName: "gpt-4.1",
+            "terra": {
+                modelName: "gpt-5.6-terra",
                 baseUrl: "https://api.openai.com/v1/chat/completions"
             },
-            "o4-mini": {
-                modelName: "o4-mini-2025-04-16",
+            "sol": {
+                modelName: "gpt-5.6-sol",
                 baseUrl: "https://api.openai.com/v1/chat/completions"
-            }
-        }
-    },
-    gemini: {
-        name: "Google Gemini",
-        models: {
-            "gemini-2.5-flash": {
-                modelName: "gemini-2.5-flash",
-                baseUrl: "https://generativelanguage.googleapis.com/v1beta/models"
             }
         }
     },
@@ -123,11 +114,11 @@ const PROVIDER_CONFIG = {
         name: "DeepSeek",
         models: {
             "deepseek-chat": {
-                modelName: "deepseek-chat",
+                modelName: "deepseek-v4-flash",
                 baseUrl: "https://api.deepseek.com/v1/chat/completions"
             },
             "deepseek-reasoner": {
-                modelName: "deepseek-reasoner",
+                modelName: "deepseek-v4-pro",
                 baseUrl: "https://api.deepseek.com/v1/chat/completions"
             }
         }
@@ -402,9 +393,8 @@ function registerShortcuts() {
         'CommandOrControl+Shift+P': () => cycleProvider(),
         // --- Direct Provider Shortcuts ---
         'CommandOrControl+1': () => switchToProvider('openai'),
-        'CommandOrControl+2': () => switchToProvider('gemini'),
-        'CommandOrControl+3': () => switchToProvider('deepseek'),
-        'CommandOrControl+4': () => switchToProvider('claude'),
+        'CommandOrControl+2': () => switchToProvider('deepseek'),
+        'CommandOrControl+3': () => switchToProvider('claude'),
         // --- Toggle Enhanced Mode (DeepSeek R1 / Claude Opus) ---
         'CommandOrControl+Shift+R': () => toggleEnhancedMode(),
         // --- Cycle OpenAI Models ---
@@ -572,8 +562,8 @@ function cycleProvider() {
         return;
     }
 
-    const currentProvider = store.get('apiProvider') || 'gemini';
-    const providers = ['openai', 'gemini', 'deepseek', 'claude'];
+    const currentProvider = store.get('apiProvider') || 'openai';
+    const providers = ['openai', 'deepseek', 'claude'];
     const currentIndex = providers.indexOf(currentProvider);
     const nextIndex = (currentIndex + 1) % providers.length;
     const nextProvider = providers[nextIndex];
@@ -600,12 +590,12 @@ function switchToProvider(provider) {
         return;
     }
 
-    if (!['openai', 'gemini', 'deepseek', 'claude'].includes(provider)) {
+    if (!['openai', 'deepseek', 'claude'].includes(provider)) {
         console.error('Invalid provider:', provider);
         return;
     }
 
-    const currentProvider = store.get('apiProvider') || 'gemini';
+    const currentProvider = store.get('apiProvider') || 'openai';
     if (currentProvider === provider) {
         return;
     }
@@ -632,7 +622,7 @@ function toggleEnhancedMode() {
         return;
     }
 
-    const currentProvider = store.get('apiProvider') || 'gemini';
+    const currentProvider = store.get('apiProvider') || 'openai';
 
     if (currentProvider === 'deepseek') {
         // Toggle DeepSeek R1 reasoning
@@ -640,7 +630,7 @@ function toggleEnhancedMode() {
         const newState = !currentState;
 
         store.set('deepseekUseReasoning', newState);
-        console.log(`DeepSeek model: ${currentState ? 'deepseek-reasoner' : 'deepseek-chat'} → ${newState ? 'deepseek-reasoner' : 'deepseek-chat'}`);
+        console.log(`DeepSeek model: ${currentState ? 'deepseek-v4-pro' : 'deepseek-v4-flash'} → ${newState ? 'deepseek-v4-pro' : 'deepseek-v4-flash'}`);
 
         // Send update to renderer to refresh UI
         if (mainWindow && !mainWindow.isDestroyed()) {
@@ -658,7 +648,7 @@ function toggleEnhancedMode() {
         const newState = !currentState;
 
         store.set('claudeUseOpus', newState);
-        console.log(`Claude model: ${currentState ? 'claude-opus-4-5' : 'claude-sonnet-4-5'} → ${newState ? 'claude-opus-4-5' : 'claude-sonnet-4-5'}`);
+        console.log(`Claude model: ${currentState ? 'claude-opus-4-8' : 'claude-sonnet-5'} → ${newState ? 'claude-opus-4-8' : 'claude-sonnet-5'}`);
 
         // Send update to renderer to refresh UI
         if (mainWindow && !mainWindow.isDestroyed()) {
@@ -688,7 +678,7 @@ function cycleOpenAIModel() {
         return;
     }
 
-    const currentProvider = store.get('apiProvider') || 'gemini';
+    const currentProvider = store.get('apiProvider') || 'openai';
     if (currentProvider !== 'openai') {
         // If not using OpenAI, show notification and optionally switch
         if (mainWindow && !mainWindow.isDestroyed()) {
@@ -701,8 +691,8 @@ function cycleOpenAIModel() {
     }
 
     // Available OpenAI models
-    const openaiModels = ['o4-mini', '4.1'];
-    const currentModel = store.get('openaiModel') || 'o4-mini';
+    const openaiModels = ['terra', 'sol'];
+    const currentModel = store.get('openaiModel') || 'terra';
 
     // Find current model index and get next model
     const currentIndex = openaiModels.indexOf(currentModel);
@@ -717,7 +707,7 @@ function cycleOpenAIModel() {
         mainWindow.webContents.send('openai-model-changed', nextModel);
 
         // Also send a notification message
-        const modelDisplayName = nextModel === 'o4-mini' ? 'o4-mini' : 'GPT-4.1';
+        const modelDisplayName = nextModel === 'sol' ? 'GPT-5.6 Sol' : 'GPT-5.6 Terra';
         mainWindow.webContents.send('provider-notification', {
             provider: 'openai',
             message: `OpenAI Model: ${modelDisplayName}`
@@ -764,7 +754,7 @@ app.whenReady().then(async () => {
 
     // Set default provider if not set
     if (!store.get('apiProvider')) {
-        store.set('apiProvider', 'gemini');
+        store.set('apiProvider', 'openai');
     }
 
     // Check for API Key on startup
@@ -836,12 +826,12 @@ ipcMain.handle('save-api-key', (event, apiData) => {
         console.log(`Received ${provider} API key, saving to store...`);
 
         // Store the API key in the appropriate field based on the provider
-        if (provider === 'openai') {
-            store.set('openaiApiKey', apiKey.trim());
-        } else if (provider === 'deepseek') {
+        if (provider === 'deepseek') {
             store.set('deepseekApiKey', apiKey.trim());
+        } else if (provider === 'claude') {
+            store.set('claudeApiKey', apiKey.trim());
         } else {
-            store.set('googleApiKey', apiKey.trim());
+            store.set('openaiApiKey', apiKey.trim());
         }
 
         // Store the current provider
@@ -874,12 +864,11 @@ ipcMain.handle('get-settings', async (event) => {
     }
 
     return {
-        provider: store.get('apiProvider') || 'gemini',
-        geminiKey: store.get('googleApiKey') || '',
+        provider: store.get('apiProvider') || 'openai',
         openaiKey: store.get('openaiApiKey') || '',
         deepseekKey: store.get('deepseekApiKey') || '',
         claudeKey: store.get('claudeApiKey') || '',
-        openaiModel: store.get('openaiModel') || 'o4-mini',
+        openaiModel: store.get('openaiModel') || 'terra',
         enableReasoning: store.get('enableReasoning') || false,
         deepseekUseReasoning: store.get('deepseekUseReasoning') || false,
         claudeUseOpus: store.get('claudeUseOpus') || false
@@ -896,10 +885,6 @@ ipcMain.handle('save-settings', async (event, settings) => {
 
         if (settings.provider) {
             store.set('apiProvider', settings.provider);
-        }
-
-        if (settings.geminiKey) {
-            store.set('googleApiKey', settings.geminiKey.trim());
         }
 
         if (settings.openaiKey) {
@@ -1010,10 +995,6 @@ ipcMain.on('save-and-close', (event, settings) => {
             store.set('apiProvider', settings.provider);
         }
 
-        if (settings.geminiKey) {
-            store.set('googleApiKey', settings.geminiKey.trim());
-        }
-
         if (settings.openaiKey) {
             store.set('openaiApiKey', settings.openaiKey.trim());
         }
@@ -1070,7 +1051,7 @@ ipcMain.on('save-model-selection', (event, modelId) => {
         console.error('Store not initialized, cannot save model selection');
         return;
     }
-    if (modelId && (modelId === '4.1')) {
+    if (modelId && (modelId === 'terra' || modelId === 'sol')) {
         store.set('openaiModel', modelId);
     } else {
         console.error('Invalid model ID:', modelId);
@@ -1083,7 +1064,7 @@ ipcMain.on('select-provider', (event, provider) => {
         console.error('Store not initialized, cannot select provider');
         return;
     }
-    if (provider && ['openai', 'gemini', 'deepseek', 'claude'].includes(provider)) {
+    if (provider && ['openai', 'deepseek', 'claude'].includes(provider)) {
         store.set('apiProvider', provider);
 
         // Send update to renderer to refresh UI
@@ -1098,9 +1079,9 @@ ipcMain.on('select-provider', (event, provider) => {
 // --- IPC Handler: Get Current Provider ---
 ipcMain.handle('get-current-provider', async (event) => {
     if (!store) {
-        return 'gemini'; // Default
+        return 'openai'; // Default
     }
-    return store.get('apiProvider') || 'gemini';
+    return store.get('apiProvider') || 'openai';
 });
 
 // --- IPC Listener: Toggle DeepSeek Reasoning ---
@@ -1128,7 +1109,7 @@ ipcMain.on('toggle-claude-opus', (event, enabled) => {
     }
     const currentState = store.get('claudeUseOpus') || false;
     store.set('claudeUseOpus', !!enabled);
-    console.log(`Claude model: ${currentState ? 'claude-opus-4-5' : 'claude-sonnet-4-5'} → ${enabled ? 'claude-opus-4-5' : 'claude-sonnet-4-5'}`);
+    console.log(`Claude model: ${currentState ? 'claude-opus-4-8' : 'claude-sonnet-5'} → ${enabled ? 'claude-opus-4-8' : 'claude-sonnet-5'}`);
 });
 
 // --- IPC Handler: Get Claude Opus State ---
@@ -1173,12 +1154,10 @@ ipcMain.handle('call-gemini', async (event, payload) => {
         return { error: 'Store is not initialized' };
     }
 
-    const provider = store.get('apiProvider') || 'gemini';
+    const provider = store.get('apiProvider') || 'openai';
     let apiKey;
 
-    if (provider === 'gemini') {
-        apiKey = store.get('googleApiKey');
-    } else if (provider === 'deepseek') {
+    if (provider === 'deepseek') {
         apiKey = store.get('deepseekApiKey');
     } else if (provider === 'claude') {
         apiKey = store.get('claudeApiKey');
@@ -1214,9 +1193,7 @@ ipcMain.handle('call-gemini', async (event, payload) => {
         }
 
         // Call the appropriate API based on the provider
-        if (provider === 'gemini') {
-            return await callGeminiApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot);
-        } else if (provider === 'deepseek') {
+        if (provider === 'deepseek') {
             return await callDeepSeekApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot, requestedModel);
         } else if (provider === 'claude') {
             return await callClaudeApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot);
@@ -1229,121 +1206,16 @@ ipcMain.handle('call-gemini', async (event, payload) => {
     }
 });
 
-// Function to call the Gemini API
-async function callGeminiApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot) {
-    const model = 'gemini-2.5-flash';
-    console.log(`API Request: Gemini (${model}) - History: ${conversationHistory.length} messages`);
-
-    // Base URL for the Gemini API
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-
-    // Create request headers
-    const headers = {
-        'Content-Type': 'application/json'
-    };
-
-    // Build the current user message parts
-    const currentUserParts = [];
-
-    // Add text if provided
-    if (textInput) {
-        currentUserParts.push({ text: textInput });
-    }
-
-    // Add custom instructions if provided
-    if (customInstructions) {
-        currentUserParts.push({ text: `Custom Instructions: ${customInstructions}` });
-    }
-
-    // Add screenshot data if available
-    if (hasScreenshot && screenshotData) {
-        currentUserParts.push({
-            inlineData: {
-                data: screenshotData.split(',')[1],
-                mimeType: 'image/png'
-            }
-        });
-    }
-
-    // Build contents array with conversation history
-    const contents = [];
-
-    // Add previous conversation history (Gemini format)
-    for (const msg of conversationHistory) {
-        if (msg.provider === 'gemini') {
-            contents.push({
-                role: msg.role,
-                parts: [{ text: msg.content }]
-            });
-        }
-    }
-
-    // Add current user message
-    contents.push({
-        role: 'user',
-        parts: currentUserParts
-    });
-
-    // Build the request body
-    const requestBody = {
-        contents: contents,
-        generationConfig: {
-            temperature: 0.7,
-            topK: 32,
-            topP: 1,
-        }
-    };
-
-    // Call the Gemini API
-    const response = await fetch(`${apiUrl}?key=${apiKey}`, {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify(requestBody)
-    });
-
-    // Parse the response
-    const responseData = await response.json();
-
-    // Check for errors in the response
-    if (!response.ok) {
-        const error = responseData.error || { message: 'Unknown API error' };
-        console.error('Gemini API error:', error);
-        return { error: `API Error: ${error.message}` };
-    }
-
-    // Extract the text from the response
-    if (responseData.candidates && responseData.candidates.length > 0 &&
-        responseData.candidates[0].content && responseData.candidates[0].content.parts &&
-        responseData.candidates[0].content.parts.length > 0) {
-        const textResponse = responseData.candidates[0].content.parts[0].text;
-        console.log(`API Response: Gemini (${model}) - Success`);
-
-        // Add to conversation history
-        const userMessage = textInput + (customInstructions ? `\n${customInstructions}` : '');
-        conversationHistory.push({ role: 'user', content: userMessage, provider: 'gemini' });
-        conversationHistory.push({ role: 'model', content: textResponse, provider: 'gemini' });
-        trimConversationHistory();
-
-        return { success: textResponse };
-    } else {
-        console.log(`API Response: Gemini (${model}) - No valid response`);
-        return { error: 'No valid response from Gemini' };
-    }
-}
-
 // Function to call the OpenAI API
 async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot, requestedModel) {
     // Determine the correct model config based on settings and screenshot status
     // Use the requested model if provided, otherwise fall back to stored model
-    const storedModel = store.get('openaiModel') || 'o4-mini';
+    const storedModel = store.get('openaiModel') || 'terra';
     const selectedModel = requestedModel || storedModel;
     const modelConfig = MODEL_CONFIG[selectedModel];
     const apiUrl = modelConfig.baseUrl;
 
     console.log(`API Request: OpenAI (${modelConfig.modelName}) - History: ${conversationHistory.length} messages`);
-
-    // Check if reasoning is enabled - only applicable for o4-mini model
-    const enableReasoning = (selectedModel === 'o4-mini') && (store.get('enableReasoning') || false);
 
     // Create request headers
     const headers = {
@@ -1381,91 +1253,54 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
         });
     }
 
-    // Build request body - use different format based on model
-    let requestBody;
+    // Build request body using the Chat Completions format
     let userMessageText = textInput + (customInstructions ? `\n${customInstructions}` : '');
 
-    if (selectedModel === '4.1') {
-        // Use Responses API format for GPT-4.1
-        const inputMessages = [];
-
-        // Add conversation history
-        for (const msg of conversationHistory) {
-            if (msg.provider === 'openai') {
-                inputMessages.push({
-                    role: msg.role,
-                    content: [{ type: "input_text", text: msg.content }]
-                });
-            }
+    const messages = [
+        {
+            role: "system",
+            content: systemInstructions
         }
+    ];
 
-        // Add current user message
-        inputMessages.push({
-            role: "user",
-            content: userMessageContent
-        });
-
-        requestBody = {
-            model: modelConfig.modelName,
-            instructions: systemInstructions,
-            input: inputMessages
-        };
-    } else {
-        // Use standard Chat Completions format for o4-mini and other models
-        const messages = [
-            {
-                role: "system",
-                content: systemInstructions
-            }
-        ];
-
-        // Add conversation history
-        for (const msg of conversationHistory) {
-            if (msg.provider === 'openai') {
-                messages.push({
-                    role: msg.role,
-                    content: msg.content
-                });
-            }
+    // Add conversation history
+    for (const msg of conversationHistory) {
+        if (msg.provider === 'openai') {
+            messages.push({
+                role: msg.role,
+                content: msg.content
+            });
         }
-
-        // Build current user message content
-        const currentUserContent = [];
-        for (const contentItem of userMessageContent) {
-            if (contentItem.type === "input_text") {
-                currentUserContent.push({
-                    type: "text",
-                    text: contentItem.text
-                });
-            } else if (contentItem.type === "input_image") {
-                currentUserContent.push({
-                    type: "image_url",
-                    image_url: {
-                        url: contentItem.image_url
-                    }
-                });
-            }
-        }
-
-        messages.push({
-            role: "user",
-            content: currentUserContent
-        });
-
-        // Set temperature based on model - o4-mini only supports temperature 1
-        const temperature = (selectedModel === 'o4-mini') ? 1 : 0.7;
-
-        requestBody = {
-            model: modelConfig.modelName,
-            messages: messages,
-            temperature: temperature
-        };
     }
 
-    // Add reasoning only for o4-mini model if enabled
-    if (selectedModel === 'o4-mini' && enableReasoning) {
-        requestBody.reasoning = true;
+    // Build current user message content
+    const currentUserContent = [];
+    for (const contentItem of userMessageContent) {
+        if (contentItem.type === "input_text") {
+            currentUserContent.push({
+                type: "text",
+                text: contentItem.text
+            });
+        } else if (contentItem.type === "input_image") {
+            currentUserContent.push({
+                type: "image_url",
+                image_url: {
+                    url: contentItem.image_url
+                }
+            });
+        }
     }
+
+    messages.push({
+        role: "user",
+        content: currentUserContent
+    });
+
+    // GPT-5.6 models use the default temperature; do not send an override
+    const requestBody = {
+        model: modelConfig.modelName,
+        messages: messages
+    };
 
     // Call the OpenAI API
     const response = await fetch(apiUrl, {
@@ -1486,32 +1321,8 @@ async function callOpenAIApi(apiKey, textInput, customInstructions, screenshotDa
 
     console.log(`API Response: OpenAI (${modelConfig.modelName}) - Success`);
 
-    // Extract the text from response - handle different formats
-    if (selectedModel === '4.1' && responseData.output) {
-        // Handle Responses API format for GPT-4.1
-        if (responseData.output.length > 0) {
-            for (const item of responseData.output) {
-                if (item.type === 'message' &&
-                    item.content &&
-                    item.content.length > 0) {
-                    for (const contentItem of item.content) {
-                        if (contentItem.type === 'output_text') {
-                            const textContent = contentItem.text;
-                            // Add to conversation history
-                            conversationHistory.push({ role: 'user', content: userMessageText, provider: 'openai' });
-                            conversationHistory.push({ role: 'assistant', content: textContent.trim(), provider: 'openai' });
-                            trimConversationHistory();
-                            return { success: textContent.trim() };
-                        }
-                    }
-                }
-            }
-            return { error: 'Could not find text in the response' };
-        } else {
-            return { error: 'No valid response from OpenAI' };
-        }
-    } else if (responseData.choices && responseData.choices.length > 0) {
-        // Handle standard Chat Completions format for o4-mini and other models
+    // Extract the text from the Chat Completions response
+    if (responseData.choices && responseData.choices.length > 0) {
         const choice = responseData.choices[0];
         if (choice.message && choice.message.content) {
             const textContent = choice.message.content;
@@ -1533,8 +1344,8 @@ async function callDeepSeekApi(apiKey, textInput, customInstructions, screenshot
     // Check if reasoning (R1) is enabled for DeepSeek
     const useReasoning = store.get('deepseekUseReasoning') || false;
 
-    // Select model based on reasoning setting
-    const model = useReasoning ? 'deepseek-reasoner' : 'deepseek-chat';
+    // Select model based on reasoning setting (V4 Pro for reasoning, V4 Flash otherwise)
+    const model = useReasoning ? 'deepseek-v4-pro' : 'deepseek-v4-flash';
 
     console.log(`API Request: DeepSeek (${model}) - History: ${conversationHistory.length} messages`);
 
@@ -1651,7 +1462,7 @@ async function callDeepSeekApi(apiKey, textInput, customInstructions, screenshot
 async function callClaudeApi(apiKey, textInput, customInstructions, screenshotData, hasScreenshot) {
     // Check if Opus is enabled
     const useOpus = store.get('claudeUseOpus') || false;
-    const model = useOpus ? 'claude-opus-4-5-20251101' : 'claude-sonnet-4-5-20250929';
+    const model = useOpus ? 'claude-opus-4-8' : 'claude-sonnet-5';
 
     console.log(`API Request: Claude (${model}) - History: ${conversationHistory.length} messages`);
 
@@ -1763,10 +1574,8 @@ async function callClaudeApi(apiKey, textInput, customInstructions, screenshotDa
 
 // Helper function to get API key based on current provider
 function getApiKey() {
-    const provider = store.get('apiProvider') || 'gemini';
-    if (provider === 'gemini') {
-        return store.get('googleApiKey');
-    } else if (provider === 'deepseek') {
+    const provider = store.get('apiProvider') || 'openai';
+    if (provider === 'deepseek') {
         return store.get('deepseekApiKey');
     } else if (provider === 'claude') {
         return store.get('claudeApiKey');

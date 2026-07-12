@@ -41,9 +41,9 @@ const claudeOpusCheckbox = document.getElementById('enable-opus-claude');
 // Variable to store the current screenshot data URL
 let currentScreenshot = null;
 // Variable to store the current selected model
-let currentModel = 'o4-mini'; // Default to o4-mini
+let currentModel = 'terra'; // Default to GPT-5.6 Terra
 // Variable to store the current provider
-let currentProvider = 'gemini'; // Default to Gemini
+let currentProvider = 'openai'; // Default to OpenAI
 
 // History state
 let history = [];
@@ -136,11 +136,10 @@ function updateProviderUI(providerId) {
         // Clear model selection for Claude (it uses opus toggle instead)
         currentModel = null;
     } else {
-        // Gemini - hide all
+        // Fallback - hide all selectors
         modelSelector.style.display = 'none';
         deepseekReasoningToggle.style.display = 'none';
         claudeModelToggle.style.display = 'none';
-        // Clear model selection for Gemini
         currentModel = null;
     }
 }
@@ -155,13 +154,8 @@ function updateModelUI(modelId) {
         }
     });
 
-    // If the new model is GPT-4.1, disable reasoning checkbox (it only works with o4-mini)
-    if (modelId === '4.1' && reasoningCheckbox) {
-        reasoningCheckbox.checked = false;
-        reasoningCheckbox.disabled = true;
-        reasoningLabel.classList.add('disabled');
-        window.electronAPI.toggleReasoning(false);
-    } else if (reasoningCheckbox) {
+    // GPT-5.6 models have reasoning built in; keep the reasoning control enabled
+    if (reasoningCheckbox) {
         reasoningCheckbox.disabled = false;
         reasoningLabel.classList.remove('disabled');
     }
@@ -695,8 +689,8 @@ async function submitToAI() {
             // Process math content based on the provider and model
             let processedContent = result.success;
 
-            // If using o4-mini, enhance mathematical notation for better rendering
-            if (currentProvider === 'openai' && currentModel === 'o4-mini') {
+            // For OpenAI output, enhance mathematical notation for better rendering
+            if (currentProvider === 'openai') {
                 processedContent = enhanceMathNotation(processedContent);
             }
 
@@ -856,12 +850,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const initialState = await window.electronAPI.getReasoningState();
             reasoningCheckbox.checked = initialState;
             // We don't update the label text now with On/Off
-
-            // If the current model is 4.1, disable reasoning (it only works with o4-mini)
-            if (currentModel === '4.1') {
-                reasoningCheckbox.disabled = true;
-                reasoningLabel.classList.add('disabled');
-            }
         } catch (error) {
             console.error('Error getting initial reasoning state:', error);
         }

@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Get DOM elements
     const providerSelect = document.getElementById('provider-select');
-    const geminiKey = document.getElementById('gemini-key');
     const openaiKey = document.getElementById('openai-key');
     const deepseekKey = document.getElementById('deepseek-key');
     const claudeKey = document.getElementById('claude-key');
@@ -13,11 +12,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const enableReasoning = document.getElementById('enable-reasoning'); // May be null if commented out
     const deepseekReasoning = document.getElementById('deepseek-reasoning');
     const claudeOpus = document.getElementById('claude-opus');
-    const geminiSettings = document.getElementById('gemini-settings');
     const openaiSettings = document.getElementById('openai-settings');
     const deepseekSettings = document.getElementById('deepseek-settings');
     const claudeSettings = document.getElementById('claude-settings');
-    const geminiProviderBtn = document.getElementById('gemini-provider');
     const openaiProviderBtn = document.getElementById('openai-provider');
     const deepseekProviderBtn = document.getElementById('deepseek-provider');
     const claudeProviderBtn = document.getElementById('claude-provider');
@@ -27,15 +24,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const settings = await window.settingsAPI.getSettings();
 
         // Set values based on retrieved settings
-        providerSelect.value = settings.provider || 'gemini';
-        geminiKey.value = settings.geminiKey || '';
+        providerSelect.value = settings.provider || 'openai';
         openaiKey.value = settings.openaiKey || '';
         deepseekKey.value = settings.deepseekKey || '';
         claudeKey.value = settings.claudeKey || '';
 
         // Only set values if elements exist
         if (openaiModel) {
-            openaiModel.value = settings.openaiModel || 'o4-mini';
+            openaiModel.value = settings.openaiModel || 'terra';
         }
 
         if (enableReasoning) {
@@ -62,7 +58,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Toggle visibility of provider-specific settings
     function updateSettingsVisibility() {
         const provider = providerSelect.value;
-        geminiSettings.style.display = provider === 'gemini' ? 'block' : 'none';
         openaiSettings.style.display = provider === 'openai' ? 'block' : 'none';
         deepseekSettings.style.display = provider === 'deepseek' ? 'block' : 'none';
         claudeSettings.style.display = provider === 'claude' ? 'block' : 'none';
@@ -70,14 +65,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Update provider buttons active state
     function updateProviderButtons(provider) {
-        geminiProviderBtn.classList.remove('active');
         openaiProviderBtn.classList.remove('active');
         deepseekProviderBtn.classList.remove('active');
         claudeProviderBtn.classList.remove('active');
 
-        if (provider === 'gemini') {
-            geminiProviderBtn.classList.add('active');
-        } else if (provider === 'openai') {
+        if (provider === 'openai') {
             openaiProviderBtn.classList.add('active');
         } else if (provider === 'deepseek') {
             deepseekProviderBtn.classList.add('active');
@@ -85,13 +77,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             claudeProviderBtn.classList.add('active');
         }
     }
-
-    // Event listener for Gemini provider button
-    geminiProviderBtn.addEventListener('click', () => {
-        providerSelect.value = 'gemini';
-        updateProviderButtons('gemini');
-        updateSettingsVisibility();
-    });
 
     // Event listener for OpenAI provider button
     openaiProviderBtn.addEventListener('click', () => {
@@ -128,11 +113,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Gather settings
         const settings = {
             provider: providerSelect.value,
-            geminiKey: geminiKey.value,
             openaiKey: openaiKey.value,
             deepseekKey: deepseekKey.value,
             claudeKey: claudeKey.value,
-            openaiModel: openaiModel ? openaiModel.value : (currentSettings.openaiModel || 'o4-mini'),
+            openaiModel: openaiModel ? openaiModel.value : (currentSettings.openaiModel || 'terra'),
             enableReasoning: enableReasoning ? enableReasoning.checked : (currentSettings.enableReasoning || false),
             deepseekUseReasoning: deepseekReasoning ? deepseekReasoning.checked : (currentSettings.deepseekUseReasoning || false),
             claudeUseOpus: claudeOpus ? claudeOpus.checked : (currentSettings.claudeUseOpus || false)

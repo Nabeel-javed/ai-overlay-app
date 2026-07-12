@@ -163,22 +163,15 @@
         <div class="setting-group">
             <h2>API Provider</h2>
             <div class="provider-buttons">
-                <button id="gemini-provider" class="provider-button active">Google Gemini</button>
-                <button id="openai-provider" class="provider-button">OpenAI</button>
+                <button id="openai-provider" class="provider-button active">OpenAI</button>
                 <button id="deepseek-provider" class="provider-button">DeepSeek</button>
                 <button id="claude-provider" class="provider-button">Claude</button>
             </div>
-            <input type="hidden" id="provider-select" value="gemini">
+            <input type="hidden" id="provider-select" value="openai">
         </div>
 
         <div class="setting-group">
             <h2>API Keys</h2>
-            <div id="gemini-settings">
-                <label for="gemini-key">Gemini API Key:</label>
-                <input type="password" id="gemini-key" placeholder="Enter your Gemini API key">
-                <div class="info-text">Get your API key from Google AI Studio</div>
-            </div>
-
             <div id="openai-settings">
                 <label for="openai-key">OpenAI API Key:</label>
                 <input type="password" id="openai-key" placeholder="Enter your OpenAI API key">
@@ -204,9 +197,9 @@
 
                 <div class="checkbox-container">
                     <input type="checkbox" id="claude-opus">
-                    <label for="claude-opus">Use Opus 4.5 Model</label>
+                    <label for="claude-opus">Use Opus 4.8 Model</label>
                 </div>
-                <div class="info-text">Opus 4.5 is more intelligent but slower and more expensive than Sonnet 4.5</div>
+                <div class="info-text">Opus 4.8 is more intelligent but slower and more expensive than Sonnet 5</div>
             </div>
         </div>
 

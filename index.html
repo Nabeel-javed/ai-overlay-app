@@ -68,7 +68,6 @@
                     <span class="provider-label">Provider:</span>
                     <div class="provider-buttons">
                         <button class="provider-btn active" data-provider="openai">OpenAI</button>
-                        <button class="provider-btn" data-provider="gemini">Gemini</button>
                         <button class="provider-btn" data-provider="deepseek">DeepSeek</button>
                         <button class="provider-btn" data-provider="claude">Claude</button>
                     </div>
@@ -78,8 +77,8 @@
                 <div class="model-selector" id="openai-model-selector">
                     <span class="model-label">Model:</span>
                     <div class="model-buttons">
-                        <button class="model-btn" data-model="4.1">GPT-4.1</button>
-                        <button class="model-btn active" data-model="o4-mini">o4-mini</button>
+                        <button class="model-btn active" data-model="terra">Terra</button>
+                        <button class="model-btn" data-model="sol">Sol</button>
                     </div>
                 </div>
 
@@ -90,18 +89,18 @@
                         title="Enable R1 Reasoning Model">R1 Mode</label>
                 </div>
 
-                <!-- Claude model toggle (Sonnet 4.5 vs Opus 4.5) -->
+                <!-- Claude model toggle (Sonnet 5 vs Opus 4.8) -->
                 <div class="claude-model-toggle" id="claude-model-toggle" style="display: none;">
                     <input type="checkbox" id="enable-opus-claude" name="enable-opus-claude">
                     <label for="enable-opus-claude" id="claude-opus-label"
-                        title="Use Opus 4.5 (more intelligent, slower)">Opus</label>
+                        title="Use Opus 4.8 (more intelligent, slower)">Opus</label>
                 </div>
 
                 <button id="settings-button" class="settings-button" title="Settings">⚙</button>
             </div>
             <div id="shortcut-hints">
                 <div>Ctrl+Shift+S to capture screenshot</div>
-                <div>Ctrl+1/2/3/4 for OpenAI/Gemini/DeepSeek/Claude</div>
+                <div>Ctrl+1/2/3 for OpenAI/DeepSeek/Claude</div>
                 <div>Ctrl+Shift+P to cycle providers</div>
                 <div>Ctrl+Shift+R to toggle R1/Opus</div>
                 <div>Ctrl+E to toggle extended chat (∞)</div>

@@ -4,32 +4,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveButton = document.getElementById('save-button');
     const apiKeyInput = document.getElementById('api-key');
     const errorMessage = document.getElementById('error-message');
-    const geminiRadio = document.getElementById('gemini');
     const openaiRadio = document.getElementById('openai');
     const deepseekRadio = document.getElementById('deepseek');
     const claudeRadio = document.getElementById('claude');
     const providerHelp = document.getElementById('provider-help');
-    const geminiLink = document.getElementById('gemini-link');
-
-    // Add link handling
-    geminiLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        window.electronAPI.openExternalLink('https://aistudio.google.com/');
-    });
 
     // Initialize provider selection
-    let selectedProvider = 'gemini';
+    let selectedProvider = 'openai';
 
     // Update provider help text when selection changes
-    geminiRadio.addEventListener('change', updateHelpText);
     openaiRadio.addEventListener('change', updateHelpText);
     deepseekRadio.addEventListener('change', updateHelpText);
     claudeRadio.addEventListener('change', updateHelpText);
 
+    // Wire up the initial (default OpenAI) help link
+    updateHelpText();
+
     function updateHelpText() {
-        if (geminiRadio.checked) {
-            selectedProvider = 'gemini';
-        } else if (openaiRadio.checked) {
+        if (openaiRadio.checked) {
             selectedProvider = 'openai';
         } else if (deepseekRadio.checked) {
             selectedProvider = 'deepseek';
@@ -37,14 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
             selectedProvider = 'claude';
         }
 
-        if (selectedProvider === 'gemini') {
-            providerHelp.innerHTML = 'Google Gemini API keys can be obtained from <a href="#" id="gemini-link">Google AI Studio</a>.';
-            const newGeminiLink = document.getElementById('gemini-link');
-            newGeminiLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                window.electronAPI.openExternalLink('https://aistudio.google.com/');
-            });
-        } else if (selectedProvider === 'openai') {
+        if (selectedProvider === 'openai') {
             providerHelp.innerHTML = 'OpenAI API keys can be obtained from your <a href="#" id="openai-link">OpenAI account</a>.';
             const openaiLink = document.getElementById('openai-link');
             openaiLink.addEventListener('click', (e) => {
@@ -77,9 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (geminiRadio.checked) {
-            selectedProvider = 'gemini';
-        } else if (openaiRadio.checked) {
+        if (openaiRadio.checked) {
             selectedProvider = 'openai';
         } else if (deepseekRadio.checked) {
             selectedProvider = 'deepseek';

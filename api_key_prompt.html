@@ -108,11 +108,7 @@
             <label>API Provider:</label>
             <div class="radio-group">
                 <div class="radio-option">
-                    <input type="radio" id="gemini" name="provider" value="gemini" checked>
-                    <label for="gemini">Google Gemini</label>
-                </div>
-                <div class="radio-option">
-                    <input type="radio" id="openai" name="provider" value="openai">
+                    <input type="radio" id="openai" name="provider" value="openai" checked>
                     <label for="openai">OpenAI</label>
                 </div>
                 <div class="radio-option">
@@ -130,8 +126,8 @@
 
         <label for="api-key">API Key:</label>
         <input type="password" id="api-key" placeholder="Enter your API key">
-        <div class="help-text" id="provider-help">Google Gemini API keys can be obtained from <a href="#"
-                id="gemini-link">Google AI Studio</a>.</div>
+        <div class="help-text" id="provider-help">OpenAI API keys can be obtained from your <a href="#"
+                id="openai-link">OpenAI account</a>.</div>
 
         <div class="button-container">
             <button id="save-button">Save API Key</button>

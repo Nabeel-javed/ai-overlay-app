@@ -1,6 +1,6 @@
 {
   "name": "spectro",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Spectro - Multi-provider AI assistant with screenshot analysis",
   "main": "main.js",
   "scripts": {
@@ -13,7 +13,7 @@
   "keywords": [],
   "author": "Tonya",
   "devDependencies": {
-    "electron": "^29.1.5",
+    "electron": "^29.4.6",
     "electron-builder": "^26.0.12"
   },
   "dependencies": {

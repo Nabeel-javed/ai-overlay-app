@@ -1,15 +1,15 @@
 # Spectro
 
-A powerful desktop overlay application that provides quick access to multiple AI providers (OpenAI, Google Gemini, and DeepSeek) with screenshot capabilities and extensive keyboard shortcuts for seamless workflow integration.
+A powerful desktop overlay application that provides quick access to multiple AI providers (OpenAI, DeepSeek, and Anthropic Claude) with screenshot capabilities and extensive keyboard shortcuts for seamless workflow integration.
 
 ## Features
 
-- **Multi-Provider Support**: OpenAI (o4-mini, GPT-4.1), Google Gemini, and DeepSeek (with R1 reasoning)
+- **Multi-Provider Support**: OpenAI (GPT-5.6 Terra / Sol), DeepSeek (V4 Flash / V4 Pro), and Anthropic Claude (Sonnet 5 / Opus 4.8)
 - **Screenshot Integration**: Capture and analyze screenshots with AI
 - **Always-on-Top Overlay**: Stays visible during screen sharing and presentations
 - **Extensive Keyboard Shortcuts**: Control everything without touching the mouse
 - **Screen Sharing Safe**: Provider selection hidden from screen capture
-- **Enhanced Math Rendering**: Automatic LaTeX formatting with improved o4-mini Unicode symbol conversion
+- **Enhanced Math Rendering**: Automatic LaTeX formatting with Unicode-to-LaTeX symbol conversion for OpenAI responses
 - **Customizable Opacity**: Adjust window transparency
 - **Cross-Platform**: Available for macOS and Windows
 
@@ -37,8 +37,8 @@ Download the latest release for your platform:
 1. **First Launch**: The app will prompt you to enter your API key
 2. **API Keys**: You can set up keys for multiple providers:
    - OpenAI API Key
-   - Google Gemini API Key  
    - DeepSeek API Key
+   - Anthropic Claude API Key
 3. **Provider Selection**: Choose your preferred AI provider from the main interface
 
 ## Keyboard Shortcuts
@@ -57,16 +57,17 @@ Download the latest release for your platform:
 | Action | macOS | Windows/Linux |
 |--------|--------|---------------|
 | **Switch to OpenAI** | `Cmd+1` | `Ctrl+1` |
-| **Switch to Gemini** | `Cmd+2` | `Ctrl+2` |
-| **Switch to DeepSeek** | `Cmd+3` | `Ctrl+3` |
+| **Switch to DeepSeek** | `Cmd+2` | `Ctrl+2` |
+| **Switch to Claude** | `Cmd+3` | `Ctrl+3` |
 | **Cycle Providers** | `Cmd+Shift+P` | `Ctrl+Shift+P` |
 
 ### Model & Feature Controls
 
 | Action | macOS | Windows/Linux |
 |--------|--------|---------------|
-| **Toggle DeepSeek R1 Reasoning** | `Cmd+Shift+R` | `Ctrl+Shift+R` |
-| **Cycle OpenAI Models** | `Cmd+Shift+M` | `Ctrl+Shift+M` |
+| **Toggle DeepSeek V4 Pro / Claude Opus** | `Cmd+Shift+R` | `Ctrl+Shift+R` |
+| **Cycle OpenAI Models (Terra / Sol)** | `Cmd+Shift+M` | `Ctrl+Shift+M` |
+| **Toggle Extended Chat (∞)** | `Cmd+E` | `Ctrl+E` |
 
 ### Window Controls
 
@@ -99,22 +100,21 @@ Download the latest release for your platform:
 ## AI Providers
 
 ### OpenAI
-- **Models**: o4-mini, GPT-4.1
-- **Features**: Text and image analysis, reasoning capabilities
-- **Temperature**: Automatically set to 1.0 for o4-mini, 0.7 for GPT-4.1
-- **Math Rendering**: Enhanced Unicode-to-LaTeX conversion for o4-mini mathematical expressions
-- **Cycling**: Use `Cmd/Ctrl+Shift+M` to switch between models
-
-### Google Gemini
-- **Model**: Gemini 1.5 Pro
-- **Features**: Text and image analysis, multimodal capabilities
-- **Temperature**: 0.7
+- **Models**: GPT-5.6 Terra (default, balanced), GPT-5.6 Sol (flagship)
+- **Features**: Text and image analysis, built-in reasoning
+- **Math Rendering**: Enhanced Unicode-to-LaTeX conversion for mathematical expressions
+- **Cycling**: Use `Cmd/Ctrl+Shift+M` to switch between Terra and Sol
 
 ### DeepSeek
-- **Models**: deepseek-chat, deepseek-reasoner (R1)
-- **Features**: Advanced reasoning with R1 mode
+- **Models**: DeepSeek V4 Flash (default), DeepSeek V4 Pro (reasoning)
+- **Features**: OpenAI-compatible API, advanced reasoning in V4 Pro mode
 - **Temperature**: 0.7
-- **R1 Reasoning**: Toggle with `Cmd/Ctrl+Shift+R`
+- **V4 Pro Toggle**: Switch with `Cmd/Ctrl+Shift+R`
+
+### Anthropic Claude
+- **Models**: Claude Sonnet 5 (default), Claude Opus 4.8 (more intelligent, slower)
+- **Features**: Text and image analysis, strong reasoning
+- **Opus Toggle**: Switch with `Cmd/Ctrl+Shift+R`
 
 ## Usage Tips
 
@@ -123,7 +123,7 @@ Download the latest release for your platform:
 3. **Custom Instructions**: Use the instructions field for consistent prompting
 4. **Keyboard-First**: Most actions can be performed without mouse interaction
 5. **Opacity Control**: Adjust transparency to see through the overlay when needed
-6. **Math Rendering**: o4-mini automatically converts Unicode symbols (∫, π, ², ₀) to proper LaTeX for beautiful mathematical display
+6. **Math Rendering**: OpenAI responses automatically convert Unicode symbols (∫, π, ², ₀) to proper LaTeX for beautiful mathematical display
 
 ## Configuration
 
@@ -134,9 +134,9 @@ Download the latest release for your platform:
 ### Available Settings
 - API keys for all providers
 - Default provider selection
-- OpenAI model preference
-- DeepSeek R1 reasoning toggle
-- Enable reasoning for OpenAI models
+- OpenAI model preference (Terra / Sol)
+- DeepSeek V4 Pro reasoning toggle
+- Claude Opus toggle
 
 ## Troubleshooting
 
@@ -211,6 +211,13 @@ spectro/
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Changelog
+
+### v1.3.0 - Model Refresh
+- Updated OpenAI to GPT-5.6 (Terra / Sol), replacing o4-mini and GPT-4.1
+- Updated DeepSeek to V4 (Flash / Pro), replacing deepseek-chat and deepseek-reasoner
+- Updated Claude to Sonnet 5 and Opus 4.8
+- Removed Google Gemini support
+- Remapped provider shortcuts to Ctrl+1/2/3 (OpenAI / DeepSeek / Claude)
 
 ### v1.2.0 - Spectro Rebranding
 - Rebranded to "Spectro" for better market positioning
