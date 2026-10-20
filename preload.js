@@ -1,102 +1,30 @@
-// preload.js
+'use strict';
 const { contextBridge, ipcRenderer } = require('electron');
-
-// Expose specific IPC channels to the renderer process securely
-// This acts as a bridge, allowing the renderer (UI) to communicate
-// with the main process (Node.js backend) without exposing
-// powerful Node.js APIs directly to the frontend code.
+function listen(channel, callback) {
+  const listener = (_event, value) => callback(value);
+  ipcRenderer.on(channel, listener);
+  return () => ipcRenderer.removeListener(channel, listener);
+}
 contextBridge.exposeInMainWorld('electronAPI', {
-
-  // Channel: main process -> renderer process (one-way)
-  // Listens for a message from the main process telling the renderer
-  // to focus the main input text area. Triggered by Cmd/Ctrl+Shift+O.
-  // Usage in renderer.js: window.electronAPI.onFocusInput(() => { inputTextArea.focus(); });
-  onFocusInput: (callback) => ipcRenderer.on('focus-input', (event, ...args) => callback(...args)),
-
-  // New channel: main process -> renderer process (one-way)
-  // Listens for a message from the main process to check which element to focus
-  // based on whether a screenshot is present or not
-  // Usage in renderer.js: window.electronAPI.onCheckFocusTarget(() => { checkAndFocusAppropriateField(); });
-  onCheckFocusTarget: (callback) => ipcRenderer.on('check-focus-target', (event) => callback()),
-
-  // Channel: renderer process -> main process (one-way)
-  // Sends a message from the renderer (e.g., when the Dismiss button is clicked)
-  // to the main process, telling it to hide the overlay window.
-  // Usage in renderer.js: window.electronAPI.sendDismissOverlay();
-  sendDismissOverlay: () => ipcRenderer.send('dismiss-overlay'),
-
-  // Channel: renderer process <-> main process (request/response)
-  // Sends text from the renderer's input field to the main process,
-  // invokes the 'call-gemini' handler in the main process (which makes the API call),
-  // and returns the result (success or error) back to the renderer.
-  // Usage in renderer.js: const result = await window.electronAPI.invokeCallGemini(text);
-  invokeCallGemini: (text) => ipcRenderer.invoke('call-gemini', text),
-
-  // New channel: main process -> renderer process (one-way)
-  // Receives the screenshot as a data URL from the main process
-  // Usage in renderer.js: window.electronAPI.onScreenshotCaptured((dataUrl) => { ... });
-  onScreenshotCaptured: (callback) => ipcRenderer.on('screenshot-captured', (event, dataUrl) => callback(dataUrl)),
-
-  // New channel: main process -> renderer process (one-way)
-  // Listens for a message from the main process to clear the screenshot
-  // Usage in renderer.js: window.electronAPI.onClearScreenshot(() => { ... });
-  onClearScreenshot: (callback) => ipcRenderer.on('clear-screenshot', (event) => callback()),
-
-  // New channel: renderer process -> main process (one-way)
-  // Sends a message to the main process to remove the screenshot
-  // Usage in renderer.js: window.electronAPI.sendRemoveScreenshot();
-  sendRemoveScreenshot: () => ipcRenderer.send('remove-screenshot'),
-
-  // New channel: main process -> renderer process (one-way)
-  // Listens for a message from the main process to reset the tool
-  // Usage in renderer.js: window.electronAPI.onResetTool(() => { ... });
-  onResetTool: (callback) => ipcRenderer.on('reset-tool', (event) => callback()),
-
-  // New channel: renderer process -> main process (one-way)
-  // Sends a message to the main process to open the settings window
-  // Usage in renderer.js: window.electronAPI.openSettings();
-  openSettings: () => ipcRenderer.send('open-settings'),
-
-  // Add this new API for license updates
-  onLicenseUpdate: (callback) => {
-    ipcRenderer.on('license-status-update', (event, data) => {
-      callback(data);
-    })
-  },
-
-  // New channels for reasoning toggle
-  getReasoningState: () => ipcRenderer.invoke('get-reasoning-state'),
-  toggleReasoning: (newState) => ipcRenderer.send('toggle-reasoning', newState),
-
-  // New channels for model selection
+  platform: process.platform,
   getSettings: () => ipcRenderer.invoke('get-settings'),
-  saveModelSelection: (modelId) => ipcRenderer.send('save-model-selection', modelId),
-
-  // Provider selection channels
-  selectProvider: (provider) => ipcRenderer.send('select-provider', provider),
-  getCurrentProvider: () => ipcRenderer.invoke('get-current-provider'),
-  onProviderChanged: (callback) => ipcRenderer.on('provider-changed', (event, provider) => callback(provider)),
-  onProviderNotification: (callback) => ipcRenderer.on('provider-notification', (event, data) => callback(data)),
-
-  // DeepSeek reasoning toggle
-  toggleDeepSeekReasoning: (enabled) => ipcRenderer.send('toggle-deepseek-reasoning', enabled),
-  getDeepSeekReasoningState: () => ipcRenderer.invoke('get-deepseek-reasoning-state'),
-  onDeepSeekReasoningChanged: (callback) => ipcRenderer.on('deepseek-reasoning-changed', (event, enabled) => callback(enabled)),
-  onOpenAIModelChanged: (callback) => ipcRenderer.on('openai-model-changed', (event, model) => callback(model)),
-
-  // Claude Opus toggle
-  toggleClaudeOpus: (enabled) => ipcRenderer.send('toggle-claude-opus', enabled),
-  getClaudeOpusState: () => ipcRenderer.invoke('get-claude-opus-state'),
-  onClaudeOpusChanged: (callback) => ipcRenderer.on('claude-opus-changed', (event, enabled) => callback(enabled)),
-
-  // Response history channels
+  saveSettings: value => ipcRenderer.invoke('save-settings', value),
+  getConnections: () => ipcRenderer.invoke('get-connections'),
+  submit: request => ipcRenderer.invoke('call-ai', request),
+  cancel: id => ipcRenderer.invoke('cancel-request', id),
+  newChat: () => ipcRenderer.invoke('new-chat'),
+  capture: () => ipcRenderer.invoke('capture-screenshot'),
+  removeScreenshot: () => ipcRenderer.send('remove-screenshot'),
+  dismiss: () => ipcRenderer.send('dismiss-overlay'),
+  openSettings: () => ipcRenderer.send('open-settings'),
   getHistory: () => ipcRenderer.invoke('get-history'),
-  saveHistoryEntry: (entry) => ipcRenderer.invoke('save-history-entry', entry),
-  clearHistory: () => ipcRenderer.invoke('clear-history'),
-
-  // Extended chat mode (disable auto-trimming)
-  toggleExtendedChat: (enabled) => ipcRenderer.send('toggle-extended-chat', enabled),
-  getExtendedChatState: () => ipcRenderer.invoke('get-extended-chat-state'),
-  onExtendedChatChanged: (callback) => ipcRenderer.on('extended-chat-changed', (event, enabled) => callback(enabled))
+  getHistoryEntry: id => ipcRenderer.invoke('get-history-entry', id),
+  resumeHistory: id => ipcRenderer.invoke('resume-history', id),
+  onEvent: callback => listen('ai-event', callback),
+  onSettings: callback => listen('settings-changed', callback),
+  onScreenshot: callback => listen('screenshot-captured', callback),
+  onReset: callback => listen('reset-tool', callback),
+  onFocus: callback => listen('focus-input', callback),
+  onNotification: callback => listen('notification', callback),
+  onHistoryChanged: callback => listen('history-changed', callback),
 });
-

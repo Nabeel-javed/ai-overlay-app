@@ -1,13 +1,11 @@
+'use strict';
 const { contextBridge, ipcRenderer } = require('electron');
-
-// Expose specific IPC channels to the renderer process
 contextBridge.exposeInMainWorld('settingsAPI', {
-    // Get current settings
-    getSettings: () => ipcRenderer.invoke('get-settings'),
-
-    // Save settings
-    saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
-
-    // Close window without saving
-    closeWindow: () => ipcRenderer.send('close-settings-window')
-}); 
+  getSettings: () => ipcRenderer.invoke('get-settings'),
+  saveSettings: settings => ipcRenderer.invoke('save-settings', settings),
+  getConnections: () => ipcRenderer.invoke('get-connections'),
+  connect: provider => ipcRenderer.invoke('connect-provider', provider),
+  openGuide: provider => ipcRenderer.send('open-setup-guide', provider),
+  clearHistory: () => ipcRenderer.invoke('clear-history'),
+  closeWindow: () => ipcRenderer.send('close-settings-window'),
+});

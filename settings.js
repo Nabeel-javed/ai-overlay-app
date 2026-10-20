@@ -1,155 +1,42 @@
-// settings.js
-document.addEventListener('DOMContentLoaded', async () => {
-
-    // Get DOM elements
-    const providerSelect = document.getElementById('provider-select');
-    const geminiKey = document.getElementById('gemini-key');
-    const openaiKey = document.getElementById('openai-key');
-    const deepseekKey = document.getElementById('deepseek-key');
-    const claudeKey = document.getElementById('claude-key');
-    const openaiModel = document.getElementById('openai-model'); // May be null if commented out
-    const saveButton = document.getElementById('save-button');
-    const cancelButton = document.getElementById('cancel-button');
-    const enableReasoning = document.getElementById('enable-reasoning'); // May be null if commented out
-    const deepseekReasoning = document.getElementById('deepseek-reasoning');
-    const claudeOpus = document.getElementById('claude-opus');
-    const geminiSettings = document.getElementById('gemini-settings');
-    const openaiSettings = document.getElementById('openai-settings');
-    const deepseekSettings = document.getElementById('deepseek-settings');
-    const claudeSettings = document.getElementById('claude-settings');
-    const geminiProviderBtn = document.getElementById('gemini-provider');
-    const openaiProviderBtn = document.getElementById('openai-provider');
-    const deepseekProviderBtn = document.getElementById('deepseek-provider');
-    const claudeProviderBtn = document.getElementById('claude-provider');
-
-    // Initially load current settings
-    try {
-        const settings = await window.settingsAPI.getSettings();
-
-        // Set values based on retrieved settings
-        providerSelect.value = settings.provider || 'gemini';
-        geminiKey.value = settings.geminiKey || '';
-        openaiKey.value = settings.openaiKey || '';
-        deepseekKey.value = settings.deepseekKey || '';
-        claudeKey.value = settings.claudeKey || '';
-
-        // Only set values if elements exist
-        if (openaiModel) {
-            openaiModel.value = settings.openaiModel || 'o4-mini';
-        }
-
-        if (enableReasoning) {
-            enableReasoning.checked = settings.enableReasoning || false;
-        }
-
-        if (deepseekReasoning) {
-            deepseekReasoning.checked = settings.deepseekUseReasoning || false;
-        }
-
-        if (claudeOpus) {
-            claudeOpus.checked = settings.claudeUseOpus || false;
-        }
-
-        // Update button UI based on saved provider
-        updateProviderButtons(providerSelect.value);
-
-        // Update visibility of provider-specific sections
-        updateSettingsVisibility();
-    } catch (error) {
-        console.error('Error loading settings:', error);
+'use strict';
+const api = window.settingsAPI;
+const $ = id => document.getElementById(id);
+let current;
+function message(text) { $('settings-message').textContent = text; }
+async function refresh() {
+  $('refresh-connections').disabled = true;
+  try {
+    const statuses = await api.getConnections();
+    for (const provider of ['openai', 'claude']) {
+      const status = statuses[provider];
+      $(`${provider}-status`).textContent = `${status.message}${status.version ? ` · v${status.version}` : ''}`;
     }
-
-    // Toggle visibility of provider-specific settings
-    function updateSettingsVisibility() {
-        const provider = providerSelect.value;
-        geminiSettings.style.display = provider === 'gemini' ? 'block' : 'none';
-        openaiSettings.style.display = provider === 'openai' ? 'block' : 'none';
-        deepseekSettings.style.display = provider === 'deepseek' ? 'block' : 'none';
-        claudeSettings.style.display = provider === 'claude' ? 'block' : 'none';
-    }
-
-    // Update provider buttons active state
-    function updateProviderButtons(provider) {
-        geminiProviderBtn.classList.remove('active');
-        openaiProviderBtn.classList.remove('active');
-        deepseekProviderBtn.classList.remove('active');
-        claudeProviderBtn.classList.remove('active');
-
-        if (provider === 'gemini') {
-            geminiProviderBtn.classList.add('active');
-        } else if (provider === 'openai') {
-            openaiProviderBtn.classList.add('active');
-        } else if (provider === 'deepseek') {
-            deepseekProviderBtn.classList.add('active');
-        } else if (provider === 'claude') {
-            claudeProviderBtn.classList.add('active');
-        }
-    }
-
-    // Event listener for Gemini provider button
-    geminiProviderBtn.addEventListener('click', () => {
-        providerSelect.value = 'gemini';
-        updateProviderButtons('gemini');
-        updateSettingsVisibility();
-    });
-
-    // Event listener for OpenAI provider button
-    openaiProviderBtn.addEventListener('click', () => {
-        providerSelect.value = 'openai';
-        updateProviderButtons('openai');
-        updateSettingsVisibility();
-    });
-
-    // Event listener for DeepSeek provider button
-    deepseekProviderBtn.addEventListener('click', () => {
-        providerSelect.value = 'deepseek';
-        updateProviderButtons('deepseek');
-        updateSettingsVisibility();
-    });
-
-    // Event listener for Claude provider button
-    claudeProviderBtn.addEventListener('click', () => {
-        providerSelect.value = 'claude';
-        updateProviderButtons('claude');
-        updateSettingsVisibility();
-    });
-
-    // Event listener for save button
-    saveButton.addEventListener('click', async () => {
-        // Get current settings to maintain values for commented out elements
-        let currentSettings = {};
-        try {
-            currentSettings = await window.settingsAPI.getSettings();
-        } catch (error) {
-            console.error('Error getting current settings:', error);
-            currentSettings = {};
-        }
-
-        // Gather settings
-        const settings = {
-            provider: providerSelect.value,
-            geminiKey: geminiKey.value,
-            openaiKey: openaiKey.value,
-            deepseekKey: deepseekKey.value,
-            claudeKey: claudeKey.value,
-            openaiModel: openaiModel ? openaiModel.value : (currentSettings.openaiModel || 'o4-mini'),
-            enableReasoning: enableReasoning ? enableReasoning.checked : (currentSettings.enableReasoning || false),
-            deepseekUseReasoning: deepseekReasoning ? deepseekReasoning.checked : (currentSettings.deepseekUseReasoning || false),
-            claudeUseOpus: claudeOpus ? claudeOpus.checked : (currentSettings.claudeUseOpus || false)
-        };
-
-        try {
-            // Save settings via IPC
-            await window.settingsAPI.saveSettings(settings);
-            // Closing is handled by main process
-        } catch (error) {
-            console.error('Error saving settings:', error);
-            alert('Failed to save settings: ' + error.message);
-        }
-    });
-
-    // Event listener for cancel button
-    cancelButton.addEventListener('click', () => {
-        window.settingsAPI.closeWindow();
-    });
-}); 
+  } catch (error) { message(error.message); }
+  finally { $('refresh-connections').disabled = false; }
+}
+api.getSettings().then(settings => {
+  current = settings; $('provider').value = settings.provider;
+  $('claude-model').value = settings.claudeModel; $('effort').value = settings.effort;
+  $('save-button').disabled = false;
+}).catch(error => message(error.message));
+refresh();
+$('refresh-connections').addEventListener('click', refresh);
+document.querySelectorAll('[data-connect]').forEach(button => button.addEventListener('click', async () => {
+  button.disabled = true; message('Complete sign-in in your browser…');
+  try { const result = await api.connect(button.dataset.connect); message(result.message); await refresh(); }
+  catch (error) { message(error.message); }
+  finally { button.disabled = false; }
+}));
+document.querySelectorAll('[data-guide]').forEach(button => button.addEventListener('click', () => api.openGuide(button.dataset.guide)));
+$('save-button').addEventListener('click', async () => {
+  $('save-button').disabled = true;
+  try {
+    current = await api.saveSettings({ ...current, provider: $('provider').value, claudeModel: $('claude-model').value, effort: $('effort').value });
+    message('Saved'); api.closeWindow();
+  } catch (error) { message(error.message); $('save-button').disabled = false; }
+});
+$('cancel-button').addEventListener('click', () => api.closeWindow());
+$('clear-history').addEventListener('click', async () => {
+  if (!confirm('Delete the saved response archive and its attachments from Spectro?')) return;
+  try { await api.clearHistory(); message('Saved responses cleared.'); } catch (error) { message(error.message); }
+});

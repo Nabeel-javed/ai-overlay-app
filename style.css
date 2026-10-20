@@ -1,564 +1,67 @@
-/* style.css */
-:root {
-    --bg-color-inactive: rgba(30, 30, 30, 0.85);
-    --bg-color-active: rgba(35, 35, 35, 0.95);
-    --text-color: #e0e0e0;
-    --label-color: #b0b0b0;
-    --border-color: #555;
-    --input-bg: rgba(50, 50, 50, 0.8);
-    --button-bg: #007aff;
-    --button-hover-bg: #0056b3;
-    --dismiss-bg: #666;
-    --dismiss-hover-bg: #444;
-    --accent-color: #4CAF50;
-    /* Accent color for checked state */
-}
-
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
-        Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-    background-color: transparent;
-    /* Crucial for transparent window */
-    color: var(--text-color);
-    font-size: 14px;
-    overflow: hidden;
-    /* Prevent scrollbars on body */
-    height: 100vh;
-}
-
-#app-container {
-    background-color: var(--bg-color-inactive);
-    /* Use variable */
-    padding: 15px;
-    border-radius: 8px;
-    box-sizing: border-box;
-    height: 100%;
-    /* Fill the body */
-    display: flex;
-    flex-direction: column;
-    transition: background-color 0.2s ease-in-out;
-    overflow-y: auto;
-    /* Allow vertical scrolling if needed */
-}
-
-/* Maybe make slightly more opaque when active (optional) */
-/* body:focus-within #app-container {
-    background-color: var(--bg-color-active);
-} */
-
-.section {
-    margin-bottom: 12px;
-}
-
-.section:last-child {
-    margin-bottom: 0;
-}
-
-label {
-    display: block;
-    margin-bottom: 5px;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--label-color);
-}
-
-textarea {
-    width: 100%;
-    box-sizing: border-box;
-    background-color: var(--input-bg);
-    color: var(--text-color);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    padding: 8px;
-    font-size: 13px;
-    resize: none;
-    /* Disable manual resizing */
-}
-
-textarea:focus {
-    outline: none;
-    border-color: var(--button-bg);
-    box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.3);
-}
-
-textarea:read-only {
-    cursor: default;
-    background-color: rgba(40, 40, 40, 0.7);
-    /* Slightly different bg if readonly */
-}
-
-/* Controls should always be visible */
-#controls {
-    position: sticky;
-    bottom: 0;
-    background-color: var(--bg-color-inactive);
-    padding: 10px 0;
-    margin: 0 -15px;
-    padding-left: 15px;
-    padding-right: 15px;
-    z-index: 10;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px;
-    /* Spacing between buttons/indicator */
-}
-
-.controls-right {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-left: auto;
-    margin-right: 10px;
-}
-
-button {
-    padding: 6px 14px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    transition: background-color 0.2s ease, opacity 0.2s ease;
-}
-
-#submit-button {
-    background-color: var(--button-bg);
-    color: white;
-}
-
-#submit-button:hover {
-    background-color: var(--button-hover-bg);
-}
-
-#submit-button:disabled {
-    background-color: #555;
-    opacity: 0.7;
-    cursor: not-allowed;
-}
-
-#dismiss-button {
-    background-color: var(--dismiss-bg);
-    color: white;
-}
-
-#dismiss-button:hover {
-    background-color: var(--dismiss-hover-bg);
-}
-
-#loading-indicator {
-    font-size: 12px;
-    color: var(--label-color);
-    margin-left: auto;
-    /* Push indicator to the right */
-}
-
-/* Response header with copy button */
-.response-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 5px;
-}
-
-.response-header label {
-    margin-bottom: 0;
-}
-
-.response-controls {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-/* History indicator */
-.history-indicator {
-    font-size: 10px;
-    color: var(--label-color);
-    background-color: var(--input-bg);
-    padding: 2px 6px;
-    border-radius: 3px;
-    border: 1px solid var(--border-color);
-}
-
-.history-indicator.active {
-    color: var(--accent-color);
-    border-color: var(--accent-color);
-}
-
-/* Icon button style for copy, etc. */
-.icon-button {
-    background-color: transparent;
-    color: var(--label-color);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    padding: 3px 8px;
-    font-size: 11px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.icon-button:hover {
-    background-color: var(--input-bg);
-    color: var(--text-color);
-    border-color: var(--text-color);
-}
-
-.icon-button:active {
-    background-color: var(--accent-color);
-    color: white;
-    border-color: var(--accent-color);
-}
-
-.icon-button.copied {
-    background-color: var(--accent-color);
-    color: white;
-    border-color: var(--accent-color);
-}
-
-/* Extended chat toggle active state */
-.icon-button.extended-active {
-    background-color: #8B5CF6;
-    color: white;
-    border-color: #8B5CF6;
-}
-
-.icon-button.extended-active:hover {
-    background-color: #7C3AED;
-    border-color: #7C3AED;
-}
-
-/* Make response area flexible */
-#response-textarea {
-    flex-grow: 1;
-    /* Allow textarea to fill remaining space */
-    min-height: 50px;
-    /* Ensure minimum height */
-}
-
-/* Utility class to hide elements visually but keep accessible */
-.hidden {
-    display: none;
-    /* Alternative: keep in layout but hide */
-    /* opacity: 0;
-    visibility: hidden; */
-}
-
-/* Screenshot Section Styles */
-#screenshot-section {
-    margin-top: 10px;
-    background-color: var(--input-bg);
-    border-radius: 4px;
-    padding: 10px;
-    border: 1px solid var(--border-color);
-}
-
-#screenshot-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-}
-
-#remove-screenshot-button {
-    background: none;
-    border: none;
-    color: var(--label-color);
-    font-size: 18px;
-    padding: 0 5px;
-    cursor: pointer;
-    transition: color 0.2s ease;
-}
-
-#remove-screenshot-button:hover {
-    color: #ff4d4d;
-}
-
-#screenshot-container {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 10px;
-    max-height: 250px;
-    /* Increased but reasonable max height */
-    overflow: hidden;
-    border-radius: 3px;
-    border: 1px solid var(--border-color);
-}
-
-#screenshot-img {
-    max-width: 100%;
-    max-height: 250px;
-    /* Make sure image respects container size */
-    object-fit: contain;
-}
-
-#custom-instructions {
-    margin-top: 8px;
-}
-
-#instructions-textarea {
-    font-size: 12px;
-    min-height: 40px;
-}
-
-/* Shortcut hints */
-#shortcut-hints {
-    display: none;
-    /* Hide by default on smaller screens */
-    font-size: 0.8em;
-    color: var(--label-color);
-    text-align: right;
-}
-
-#shortcut-hints div {
-    margin-bottom: 2px;
-}
-
-#settings-button {
-    background-color: var(--dismiss-bg);
-    color: white;
-    font-size: 16px;
-    padding: 6px 10px;
-}
-
-#settings-button:hover {
-    background-color: var(--dismiss-hover-bg);
-}
-
-/* Styles for Reasoning Checkbox */
-.reasoning-toggle {
-    display: flex;
-    align-items: center;
-}
-
-.reasoning-toggle input[type="checkbox"] {
-    display: none;
-    /* Hide the actual checkbox */
-}
-
-.reasoning-toggle label {
-    font-size: 0.85em;
-    cursor: pointer;
-    padding: 4px 8px;
-    color: var(--label-color);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background-color: var(--input-bg);
-    line-height: 1.2;
-    user-select: none;
-    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-    white-space: nowrap;
-}
-
-.reasoning-toggle input[type="checkbox"]:checked+label {
-    color: white;
-    background-color: var(--accent-color);
-    border-color: var(--accent-color);
-}
-
-.reasoning-toggle label:hover {
-    color: var(--text-color);
-    border-color: var(--text-color);
-}
-
-.reasoning-toggle label.disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    color: var(--label-color);
-    background-color: var(--input-bg);
-    border-color: var(--border-color);
-}
-
-/* Claude Model Toggle Styles */
-.claude-model-toggle {
-    display: flex;
-    align-items: center;
-}
-
-.claude-model-toggle input[type="checkbox"] {
-    display: none;
-}
-
-.claude-model-toggle label {
-    font-size: 0.85em;
-    cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 4px;
-    border: 1px solid var(--border-color);
-    color: var(--label-color);
-    background-color: var(--input-bg);
-    transition: all 0.2s ease;
-    white-space: nowrap;
-}
-
-.claude-model-toggle input[type="checkbox"]:checked+label {
-    color: white;
-    background-color: #8B5CF6;
-    border-color: #8B5CF6;
-}
-
-.claude-model-toggle label:hover {
-    color: var(--text-color);
-    border-color: var(--text-color);
-}
-
-/* Model Selector Styles */
-.model-selector {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.model-label {
-    font-size: 0.85em;
-    color: var(--label-color);
-    white-space: nowrap;
-}
-
-.model-buttons {
-    display: flex;
-    border-radius: 4px;
-    overflow: hidden;
-    border: 1px solid var(--border-color);
-}
-
-.model-btn {
-    padding: 4px 8px;
-    font-size: 0.8em;
-    background-color: var(--input-bg);
-    color: var(--label-color);
-    border: none;
-    border-right: 1px solid var(--border-color);
-    cursor: pointer;
-    transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-.model-btn:last-child {
-    border-right: none;
-}
-
-.model-btn:hover {
-    background-color: rgba(70, 70, 70, 0.8);
-    color: var(--text-color);
-}
-
-.model-btn.active {
-    background-color: var(--button-bg);
-    color: white;
-}
-
-/* Provider Selector Styles */
-.provider-selector {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-right: 10px;
-}
-
-.provider-label {
-    font-size: 0.85em;
-    color: var(--label-color);
-    white-space: nowrap;
-}
-
-.provider-buttons {
-    display: flex;
-    border-radius: 4px;
-    overflow: hidden;
-    border: 1px solid var(--border-color);
-    flex-wrap: nowrap;
-}
-
-.provider-btn {
-    padding: 4px 8px;
-    font-size: 0.8em;
-    background-color: var(--input-bg);
-    color: var(--label-color);
-    border: none;
-    border-right: 1px solid var(--border-color);
-    cursor: pointer;
-    transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-.provider-btn:last-child {
-    border-right: none;
-}
-
-.provider-btn:hover {
-    background-color: rgba(70, 70, 70, 0.8);
-    color: var(--text-color);
-}
-
-.provider-btn.active {
-    background-color: var(--accent-color);
-    color: white;
-}
-
-/* Responsive design for controls */
-@media (max-width: 580px) {
-    #controls {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .controls-right {
-        margin: 5px 0;
-        width: 100%;
-        justify-content: space-between;
-    }
-
-    #settings-button {
-        align-self: flex-end;
-    }
-}
-
-@media (min-width: 768px) {
-    #shortcut-hints {
-        display: block;
-    }
-}
-
-/* Notification system styles */
-.notification {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    padding: 10px 16px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 500;
-    z-index: 1000;
-    opacity: 0;
-    transform: translateX(20px);
-    transition: opacity 0.3s ease, transform 0.3s ease;
-    pointer-events: none;
-    max-width: 280px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.notification.show {
-    opacity: 1;
-    transform: translateX(0);
-}
-
-.notification-success {
-    background-color: #4CAF50;
-    color: white;
-}
-
-.notification-info {
-    background-color: #2196F3;
-    color: white;
-}
-
-.notification-warning {
-    background-color: #FF9800;
-    color: white;
-}
-
-.notification-error {
-    background-color: #f44336;
-    color: white;
-}
+:root { color-scheme: dark; --bg: #202124; --panel: #2a2b2f; --text: #e5e7eb; --muted: #a6abb6; --border: #444751; --accent: #6ca8ff; }
+* { box-sizing: border-box; }
+body { margin: 0; color: var(--text); background: transparent; font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+button, select, textarea { font: inherit; }
+button { border: 1px solid var(--border); border-radius: 6px; background: #32343a; color: var(--text); padding: 6px 10px; cursor: pointer; white-space: nowrap; }
+button:hover { background: #40434b; }
+button:disabled { opacity: .45; cursor: default; }
+button:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.primary { background: #276cd6; border-color: #397fe8; color: white; }
+.primary:hover { background: #347be6; }
+.danger { color: #ffaaa3; }
+.hidden { display: none !important; }
+.muted, small { color: var(--muted); font-size: 11px; }
+.row, .provider-row { display: flex; align-items: center; gap: 8px; }
+.row > label { margin: 0; }
+.end { justify-content: flex-end; }
+#app-container { height: 100vh; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; background: rgba(32,33,36,.97); border: 1px solid var(--border); border-radius: 10px; overflow: auto; }
+.titlebar { display: flex; align-items: center; justify-content: space-between; gap: 12px; -webkit-app-region: drag; padding-bottom: 4px; }
+.brand { font-size: 16px; font-weight: 650; }
+.brand small { margin-left: 8px; font-size: 9px; letter-spacing: 1px; font-weight: 500; }
+.title-actions { display: flex; gap: 6px; -webkit-app-region: no-drag; }
+.title-actions button { padding: 4px 8px; font-size: 11px; }
+.segmented { display: inline-flex; gap: 2px; padding: 2px; background: #16171a; border-radius: 7px; }
+.segmented button { border: none; background: transparent; font-size: 12px; padding: 5px 10px; }
+.segmented button.active { background: #365582; color: white; }
+.model-name { font-size: 12px; }
+#connection-status { margin-left: auto; }
+label { display: block; color: #c1c6d1; font-size: 12px; }
+textarea { width: 100%; min-height: 64px; resize: vertical; border: 1px solid var(--border); border-radius: 7px; background: #282a2f; color: var(--text); padding: 9px; line-height: 1.5; }
+textarea:focus { outline: none; border-color: var(--accent); }
+#input-textarea { flex-shrink: 0; }
+#screenshot-section { border: 1px solid var(--border); padding: 9px; border-radius: 7px; background: var(--panel); }
+#screenshot-section .row { justify-content: space-between; }
+#screenshot-img { display: block; max-width: 100%; max-height: 160px; margin: 8px auto; object-fit: contain; }
+#instructions-textarea { min-height: 45px; margin-top: 5px; }
+#controls { flex-shrink: 0; }
+#submit-hint { flex-grow: 1; }
+#status-message { color: var(--muted); min-height: 15px; font-size: 11px; overflow-wrap: anywhere; }
+#status-message.error { color: #ffaaa3; }
+#answer-section { flex: 1; display: flex; flex-direction: column; min-height: 120px; gap: 8px; }
+.response-header { justify-content: space-between; }
+.response-header button { font-size: 11px; padding: 3px 7px; }
+#response-model { overflow-wrap: anywhere; }
+#history-actions { padding: 7px; background: #333047; border-radius: 6px; justify-content: space-between; }
+#history-actions button { font-size: 11px; }
+.response-area { flex: 1; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; border-top: 1px solid var(--border); padding: 10px 2px; min-height: 80px; }
+.response-area:has(p), .response-area:has(pre) { white-space: normal; }
+.response-area > :first-child { margin-top: 0; }
+.response-area pre { overflow: auto; padding: 10px; border-radius: 6px; background: #15161a; white-space: pre; }
+.response-area code { font-family: ui-monospace, monospace; font-size: 12px; }
+.response-area a { color: #8abbff; }
+.response-area table { border-collapse: collapse; display: block; overflow: auto; }
+.response-area th, .response-area td { border: 1px solid var(--border); padding: 5px 8px; }
+.response-area blockquote { margin-left: 0; border-left: 3px solid var(--border); padding-left: 12px; color: #c2c7d1; }
+.response-area mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+#notification { position: fixed; bottom: 16px; left: 16px; right: 16px; border: 1px solid #5c7091; background: #263a58; padding: 10px 14px; border-radius: 7px; z-index: 20; }
+.settings-page { background: var(--bg); }
+.settings-container { padding: 24px; max-width: 620px; margin: auto; }
+h1 { font-size: 22px; margin: 0 0 10px; }
+h2 { font-size: 14px; margin: 0 0 12px; }
+.settings-container p { line-height: 1.6; }
+.setting-card { border: 1px solid var(--border); border-radius: 9px; padding: 16px; margin: 16px 0; }
+.setting-card label { margin: 12px 0 6px; }
+.setting-card label:first-child { margin-top: 0; }
+select { width: 100%; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px; }
+#settings-message { color: #a6c8ff; overflow-wrap: anywhere; min-height: 20px; }
+@media (max-width: 500px) { .brand small { display: none; } .provider-row { flex-wrap: wrap; } #connection-status { font-size: 10px; } #submit-hint { font-size: 10px; } }

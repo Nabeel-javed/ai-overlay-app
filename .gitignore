@@ -54,4 +54,9 @@ lerna-debug.log*
 config.json
 
 # Package-lock (optional, depending on your team's preference)
-# package-lock.json 
+# package-lock.json
+
+# Local verification artifacts
+.artifacts/
+test-results/
+playwright-report/

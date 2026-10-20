@@ -1,230 +1,44 @@
-<!DOCTYPE html>
-<html>
-
+<!doctype html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';">
-    <title>Spectro Settings</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            color: #333;
-            background-color: #f5f5f5;
-        }
-
-        .container {
-            max-width: 450px;
-            margin: 0 auto;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        h1 {
-            margin-top: 0;
-            color: #2a7ae2;
-            font-size: 24px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-
-        .setting-group {
-            margin-bottom: 20px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .setting-group:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-            padding-bottom: 0;
-        }
-
-        h2 {
-            font-size: 18px;
-            margin-top: 0;
-            margin-bottom: 15px;
-            color: #444;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-
-        input[type="text"],
-        input[type="password"],
-        select {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 15px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-
-        select {
-            background-color: white;
-        }
-
-        .button-container {
-            text-align: right;
-            margin-top: 20px;
-            display: flex;
-            justify-content: flex-end;
-        }
-
-        button {
-            padding: 10px 15px;
-            margin-left: 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            border: none;
-            font-size: 14px;
-        }
-
-        .save-button {
-            background-color: #2a7ae2;
-            color: white;
-        }
-
-        .save-button:hover {
-            background-color: #1c5aa6;
-        }
-
-        .cancel-button {
-            background-color: #f5f5f5;
-            color: #333;
-            border: 1px solid #ddd;
-        }
-
-        .cancel-button:hover {
-            background-color: #e5e5e5;
-        }
-
-        .checkbox-container {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .checkbox-container input[type="checkbox"] {
-            margin-right: 10px;
-        }
-
-        .info-text {
-            font-size: 13px;
-            color: #666;
-            margin-top: -5px;
-            margin-bottom: 15px;
-        }
-
-        /* New styles for provider selection buttons */
-        .provider-buttons {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-        }
-
-        .provider-button {
-            flex: 1;
-            padding: 12px;
-            background-color: #f5f5f5;
-            color: #333;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            cursor: pointer;
-            text-align: center;
-            font-weight: 500;
-        }
-
-        .provider-button.active {
-            background-color: #2a7ae2;
-            color: white;
-            border-color: #2a7ae2;
-        }
-
-        .provider-button:hover:not(.active) {
-            background-color: #e5e5e5;
-        }
-    </style>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Spectro Settings</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="settings.js"></script>
 </head>
-
-<body>
-    <div class="container">
-        <h1>Spectro Settings</h1>
-
-        <div class="setting-group">
-            <h2>API Provider</h2>
-            <div class="provider-buttons">
-                <button id="gemini-provider" class="provider-button active">Google Gemini</button>
-                <button id="openai-provider" class="provider-button">OpenAI</button>
-                <button id="deepseek-provider" class="provider-button">DeepSeek</button>
-                <button id="claude-provider" class="provider-button">Claude</button>
-            </div>
-            <input type="hidden" id="provider-select" value="gemini">
-        </div>
-
-        <div class="setting-group">
-            <h2>API Keys</h2>
-            <div id="gemini-settings">
-                <label for="gemini-key">Gemini API Key:</label>
-                <input type="password" id="gemini-key" placeholder="Enter your Gemini API key">
-                <div class="info-text">Get your API key from Google AI Studio</div>
-            </div>
-
-            <div id="openai-settings">
-                <label for="openai-key">OpenAI API Key:</label>
-                <input type="password" id="openai-key" placeholder="Enter your OpenAI API key">
-                <div class="info-text">Get your API key from OpenAI Platform</div>
-            </div>
-
-            <div id="deepseek-settings">
-                <label for="deepseek-key">DeepSeek API Key:</label>
-                <input type="password" id="deepseek-key" placeholder="Enter your DeepSeek API key">
-                <div class="info-text">Get your API key from DeepSeek Platform</div>
-
-                <div class="checkbox-container">
-                    <input type="checkbox" id="deepseek-reasoning">
-                    <label for="deepseek-reasoning">Enable R1 Reasoning Model</label>
-                </div>
-                <div class="info-text">R1 model provides enhanced reasoning capabilities but may be slower</div>
-            </div>
-
-            <div id="claude-settings">
-                <label for="claude-key">Claude API Key:</label>
-                <input type="password" id="claude-key" placeholder="Enter your Claude API key">
-                <div class="info-text">Get your API key from Anthropic Console</div>
-
-                <div class="checkbox-container">
-                    <input type="checkbox" id="claude-opus">
-                    <label for="claude-opus">Use Opus 4.5 Model</label>
-                </div>
-                <div class="info-text">Opus 4.5 is more intelligent but slower and more expensive than Sonnet 4.5</div>
-            </div>
-        </div>
-
-        <div class="setting-group">
-            <!-- <h2>Options</h2>
-            <div class="checkbox-container">
-                <input type="checkbox" id="enable-reasoning">
-                <label for="enable-reasoning">Enable Reasoning (o4-mini only)</label>
-            </div> -->
-        </div>
-
-        <div class="button-container">
-            <button id="cancel-button" class="cancel-button">Cancel</button>
-            <button id="save-button" class="save-button">Save Settings</button>
-        </div>
-    </div>
-
-    <script src="./settings.js"></script>
+<body class="settings-page">
+  <main class="settings-container">
+    <h1>Connections & models</h1>
+    <p class="muted">Use your signed-in Codex and Claude subscriptions. Usage is shared with your other sessions.</p>
+    <section class="setting-card">
+      <h2>OpenAI · GPT-6 Astra</h2>
+      <p id="openai-status" role="status">Checking…</p>
+      <div class="row"><button data-connect="openai">Sign in with ChatGPT</button><button data-guide="openai">Setup guide</button></div>
+    </section>
+    <section class="setting-card">
+      <h2>Anthropic · Claude</h2>
+      <p id="claude-status" role="status">Checking…</p>
+      <div class="row"><button data-connect="claude">Sign in with Claude</button><button data-guide="claude">Setup guide</button></div>
+    </section>
+    <button id="refresh-connections">Refresh connections</button>
+    <section class="setting-card">
+      <label for="provider">Default provider</label>
+      <select id="provider"><option value="openai">OpenAI · GPT-6 Astra</option><option value="claude">Anthropic · Claude</option></select>
+      <label for="claude-model">Claude model</label>
+      <select id="claude-model"><option value="sonnet">Latest Sonnet</option><option value="opus">Latest Opus</option></select>
+      <label for="effort">Astra reasoning</label>
+      <select id="effort"><option value="low">Low · quicker answers</option><option value="medium">Medium</option><option value="high">High · more reasoning</option></select>
+      <p class="muted">Claude aliases follow the installed client's current models. Each answer shows the resolved model.</p>
+    </section>
+    <section class="setting-card">
+      <h2>Saved responses</h2>
+      <p class="muted">The latest 50 completed answers and attachments are kept locally. Clearing this archive does not delete transcripts stored by Codex or Claude.</p>
+      <button id="clear-history" class="danger">Clear saved responses</button>
+    </section>
+    <p class="muted">Spectro does not use API keys or switch to an API when a subscription limit is reached. Provider-side extra usage settings still apply to your account.</p>
+    <p id="settings-message" role="status"></p>
+    <div class="row end"><button id="cancel-button">Close</button><button id="save-button" class="primary" disabled>Save settings</button></div>
+  </main>
 </body>
-
 </html>
