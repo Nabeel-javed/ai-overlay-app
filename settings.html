@@ -10,7 +10,7 @@
 <body class="settings-page">
   <main class="settings-container">
     <h1>Connections & models</h1>
-    <p class="muted">Use your signed-in Codex and Claude subscriptions. Usage is shared with your other sessions.</p>
+    <p class="muted">Use your signed-in Codex, Claude and Grok subscriptions. Usage is shared with your other sessions.</p>
     <section class="setting-card">
       <h2>OpenAI · GPT-6 Astra</h2>
       <p id="openai-status" role="status">Checking…</p>
@@ -23,17 +23,24 @@
     </section>
     <button id="refresh-connections">Refresh connections</button>
     <section class="setting-card">
+      <h2>xAI · Grok 4.7</h2>
+      <p id="grok-status" role="status">Checking…</p>
+      <div class="row"><button data-connect="grok">Sign in with Grok</button><button data-guide="grok">Setup guide</button></div>
+    </section>
+    <section class="setting-card">
+      <label for="mode">Default view</label>
+      <select id="mode"><option value="compare">All three · independent parallel answers</option><option value="single">Single provider · conversation</option></select>
       <label for="provider">Default provider</label>
-      <select id="provider"><option value="openai">OpenAI · GPT-6 Astra</option><option value="claude">Anthropic · Claude</option></select>
+      <select id="provider"><option value="openai">OpenAI · GPT-6 Astra</option><option value="claude">Anthropic · Claude</option><option value="grok">xAI · Grok 4.7</option></select>
       <label for="claude-model">Claude model</label>
       <select id="claude-model"><option value="sonnet">Latest Sonnet</option><option value="opus">Latest Opus</option></select>
-      <label for="effort">Astra reasoning</label>
+      <label for="effort">Astra and Grok reasoning</label>
       <select id="effort"><option value="low">Low · quicker answers</option><option value="medium">Medium</option><option value="high">High · more reasoning</option></select>
       <p class="muted">Claude aliases follow the installed client's current models. Each answer shows the resolved model.</p>
     </section>
     <section class="setting-card">
       <h2>Saved responses</h2>
-      <p class="muted">The latest 50 completed answers and attachments are kept locally. Clearing this archive does not delete transcripts stored by Codex or Claude.</p>
+      <p class="muted">The latest 50 answers or comparison rounds and attachments are kept locally. Clearing this archive does not delete native client transcripts. Saved Grok answers and comparison rounds can be reviewed, but cannot be resumed as one conversation.</p>
       <button id="clear-history" class="danger">Clear saved responses</button>
     </section>
     <p class="muted">Spectro does not use API keys or switch to an API when a subscription limit is reached. Provider-side extra usage settings still apply to your account.</p>

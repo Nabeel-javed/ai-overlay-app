@@ -18,7 +18,7 @@ class MemoryStore {
 function fixture(t, legacy) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'spectro-unit-'));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
-  return new AppStorage(new MemoryStore(migrateLegacyData(legacy)), directory, crypto.randomBytes(32));
+  return new AppStorage(new MemoryStore(migrateLegacyData({ mode: 'single', ...legacy })), directory, crypto.randomBytes(32));
 }
 const payload = { requestId: 'test-1', text: 'A question', instructions: '', screenshot: null };
 function deferred() { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; }
@@ -148,4 +148,56 @@ test('provider child environments exclude credentials, routing and nested-agent 
   finally { if (original === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = original; }
   assert.equal(checkVersion('codex-cli 0.163.0', '0.163.0', 'Codex'), '0.163.0');
   assert.throws(() => checkVersion('0.162.0', '0.163.0', 'Codex'));
+});
+
+test('comparison dispatches identical image requests concurrently and saves independent failures', async t => {
+  const storage = fixture(t, { mode: 'compare', claudeUseOpus: true });
+  const gates = Object.fromEntries(['openai', 'claude', 'grok'].map(provider => [provider, deferred()]));
+  const started = [], events = [];
+  const providers = Object.fromEntries(Object.keys(gates).map(provider => [provider, {
+    run: async (request, session, { emit }) => {
+      started.push({ request, session }); emit({ type: 'delta', text: provider });
+      await gates[provider].promise;
+      if (provider === 'claude') throw Object.assign(new Error('Quota reached'), { code: 'QUOTA_EXCEEDED' });
+      return { text: `${provider} answer`, actualModel: request.model, sessionId: provider };
+    },
+  }]));
+  storage.setSession('openai', { sessionId: 'unrelated conversation' });
+  const controller = new RequestController(storage, providers, event => events.push(event));
+  const image = 'data:image/png;base64,aGVsbG8=';
+  const pending = controller.submit({ ...payload, screenshot: image });
+  assert.equal(started.length, 3, 'All adapters start before any finishes');
+  assert.ok(started.every(({ request, session }) => request.text === payload.text && request.screenshot === image && session === null));
+  storage.setSettings({ ...storage.getSettings(), mode: 'single', claudeModel: 'sonnet' });
+  assert.equal(started[1].request.model, 'opus');
+  gates.grok.resolve(); await new Promise(setImmediate);
+  assert.ok(events.some(event => event.provider === 'grok' && event.type === 'finished'));
+  assert.ok(controller.active, 'Fast answer does not end the other requests');
+  gates.claude.resolve(); gates.openai.resolve();
+  const result = await pending;
+  assert.equal(result.results.filter(answer => answer.ok).length, 2);
+  assert.equal(result.results[1].code, 'QUOTA_EXCEEDED');
+  assert.equal(storage.history().length, 1);
+  assert.equal(storage.entry(result.entryId).screenshot, image);
+  assert.equal(storage.getSession('openai').sessionId, 'unrelated conversation');
+});
+
+test('cancelling one comparison model leaves the others running; reset waits for all', async t => {
+  const storage = fixture(t, { mode: 'compare' });
+  const signals = {};
+  const providers = Object.fromEntries(['openai', 'claude', 'grok'].map(provider => [provider, {
+    run: (_request, _session, { signal }) => new Promise((_, reject) => {
+      signals[provider] = signal;
+      signal.addEventListener('abort', () => reject(Object.assign(new Error('Cancelled'), { code: 'CANCELLED' })), { once: true });
+    }),
+  }]));
+  const controller = new RequestController(storage, providers, () => {});
+  const pending = controller.submit(payload);
+  assert.equal(controller.cancel(payload.requestId, 'grok'), true);
+  assert.equal(signals.grok.aborted, true);
+  assert.equal(signals.openai.aborted, false);
+  await controller.reset();
+  assert.equal((await pending).results.every(answer => answer.code === 'CANCELLED'), true);
+  assert.equal(storage.history().length, 0);
+  assert.equal(controller.active, null);
 });

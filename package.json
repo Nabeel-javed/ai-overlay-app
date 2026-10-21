@@ -11,7 +11,8 @@
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
     "dist:mac": "electron-builder --mac --arm64",
-    "dist:win": "electron-builder --win"
+    "dist:win": "electron-builder --win",
+    "test:privacy": "node scripts/privacy-check.cjs"
   },
   "keywords": [],
   "author": "Tonya",

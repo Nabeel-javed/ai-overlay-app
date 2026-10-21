@@ -5,6 +5,7 @@ const { pathToFileURL } = require('node:url');
 const { createStorage } = require('./src/storage');
 const { CodexProvider } = require('./src/providers/codex');
 const { ClaudeProvider } = require('./src/providers/claude');
+const { GrokProvider } = require('./src/providers/grok');
 const { RequestController } = require('./src/requests');
 const { Windows } = require('./src/windows');
 const { PROVIDERS } = require('./src/models');
@@ -52,35 +53,38 @@ function registerIpc() {
     try { return await providers[provider].login(openLoginUrl); } finally { loginPending.delete(provider); }
   });
   handle('call-ai', payload => requests.submit(payload), ['index.html']);
-  handle('cancel-request', requestId => requests.cancel(requestId), ['index.html']);
+  handle('cancel-request', (requestId, provider) => requests.cancel(requestId, provider), ['index.html']);
   handle('new-chat', newChat, ['index.html']);
   handle('get-history', () => storage.history(), ['index.html']);
   handle('get-history-entry', id => storage.entry(id), ['index.html']);
   handle('resume-history', async id => { await requests.restore(id); return broadcastSettings(); }, ['index.html']);
   handle('clear-history', () => { storage.clearHistory(); windows.send('history-changed'); return { ok: true }; });
   handle('capture-screenshot', () => windows.capture(), ['index.html']);
-  on('dismiss-overlay', () => windows.main?.hide());
+  on('dismiss-overlay', () => windows.hide());
   on('open-settings', () => windows.openSettings());
   on('close-settings-window', () => windows.settings?.close());
   on('remove-screenshot', () => windows.resizeForScreenshot(false));
   on('open-setup-guide', provider => {
-    const urls = { openai: 'https://learn.chatgpt.com/docs/codex-cli', claude: 'https://code.claude.com/docs/en/setup' };
+    const urls = { openai: 'https://learn.chatgpt.com/docs/codex-cli', claude: 'https://code.claude.com/docs/en/setup', grok: 'https://docs.x.ai/build/cli' };
     if (urls[provider]) shell.openExternal(urls[provider]);
   });
 }
 function registerShortcuts() {
-  const choose = provider => setSettings({ ...storage.getSettings(), provider });
+  const choose = provider => setSettings({ ...storage.getSettings(), provider, mode: 'single' });
   const toggleClaude = () => {
     const settings = storage.getSettings();
-    setSettings({ ...settings, provider: 'claude', claudeModel: settings.claudeModel === 'sonnet' ? 'opus' : 'sonnet' });
+    setSettings({ ...settings, claudeModel: settings.claudeModel === 'sonnet' ? 'opus' : 'sonnet' });
   };
   const actions = {
     'CommandOrControl+Shift+O': () => windows.focus(),
     'CommandOrControl+Shift+H': () => windows.toggle(),
+    'CommandOrControl+Shift+Escape': () => windows.hide(),
     'CommandOrControl+Shift+S': () => windows.capture().catch(error => windows.notify(error.message)),
-    'CommandOrControl+Shift+P': () => choose(storage.getSettings().provider === 'openai' ? 'claude' : 'openai'),
+    'CommandOrControl+Shift+P': () => choose(PROVIDERS[(PROVIDERS.indexOf(storage.getSettings().provider) + 1) % PROVIDERS.length]),
+    'CommandOrControl+0': () => setSettings({ ...storage.getSettings(), mode: 'compare' }),
     'CommandOrControl+1': () => choose('openai'),
     'CommandOrControl+4': () => choose('claude'),
+    'CommandOrControl+5': () => choose('grok'),
     'CommandOrControl+Shift+R': toggleClaude,
     'CommandOrControl+Alt+Up': () => windows.move(0, -20),
     'CommandOrControl+Alt+Down': () => windows.move(0, 20),
@@ -102,6 +106,7 @@ else {
     providers = {
       openai: new CodexProvider(path.join(app.getPath('userData'), 'runtime', 'codex')),
       claude: new ClaudeProvider(path.join(app.getPath('userData'), 'runtime', 'claude')),
+      grok: new GrokProvider(path.join(app.getPath('userData'), 'runtime', 'grok')),
     };
     windows = new Windows(storage, { newChat, root: __dirname });
     requests = new RequestController(storage, providers, event => windows.send('ai-event', event));

@@ -1,5 +1,5 @@
 'use strict';
-const { validateRequest, ASTRA } = require('./models');
+const { validateRequest, ASTRA, GROK, PROVIDERS } = require('./models');
 const { ProviderError } = require('./providers/runtime');
 
 /** Coordinates one immutable request at a time; provider switches affect only later requests. */
@@ -12,8 +12,9 @@ class RequestController {
     let request;
     try { request = validateRequest(payload); } catch (error) { return { ok: false, code: 'INVALID_REQUEST', error: error.message }; }
     const settings = this.storage.getSettings();
+    if (settings.mode === 'compare') return this.compare(request, settings);
     const provider = settings.provider;
-    request = { ...request, provider, model: provider === 'openai' ? ASTRA : settings.claudeModel, effort: settings.effort };
+    request = { ...request, provider, model: this.model(provider, settings), effort: settings.effort };
     const controller = new AbortController();
     let done;
     const active = { id: request.requestId, controller, done: new Promise(resolve => { done = resolve; }), timedOut: false };
@@ -41,8 +42,50 @@ class RequestController {
       clearTimeout(timeout); this.active = null; done();
     }
   }
-  cancel(requestId) {
+  model(provider, settings) { return { openai: ASTRA, claude: settings.claudeModel, grok: GROK }[provider]; }
+  async compare(request, settings) {
+    let done;
+    const active = { id: request.requestId, controllers: new Map(), done: new Promise(resolve => { done = resolve; }) };
+    this.active = active;
+    try {
+      // Start every adapter before awaiting any result. Each round has fresh, equal context.
+      const results = await Promise.all(PROVIDERS.map(async provider => {
+        const model = this.model(provider, settings);
+        const controller = new AbortController();
+        active.controllers.set(provider, controller);
+        let timedOut = false;
+        const timer = setTimeout(() => { timedOut = true; controller.abort(); }, this.timeout);
+        const emit = event => this.emit({ ...event, provider, requestId: request.requestId });
+        emit({ type: 'started', model, comparison: true });
+        let answer;
+        try {
+          const result = await this.providers[provider].run({ ...request, provider, model, effort: settings.effort }, null, { signal: controller.signal, emit });
+          if (controller.signal.aborted) throw new ProviderError('Request cancelled.', 'CANCELLED');
+          if (!result.text?.trim()) throw new ProviderError('The provider returned an empty answer.');
+          answer = { ...result, ok: true, provider, model: result.actualModel || model, selectedModel: model };
+        } catch (error) {
+          answer = { ok: false, provider, model, code: timedOut ? 'TIMEOUT' : (error.code || 'PROVIDER_ERROR'),
+            error: timedOut ? 'The request timed out.' : error.message };
+        } finally { clearTimeout(timer); active.controllers.delete(provider); }
+        emit({ type: 'finished', result: answer });
+        return answer;
+      }));
+      const successful = results.filter(result => result.ok);
+      const saved = successful.length ? this.storage.archive({
+        input: request.text, instructions: request.instructions, screenshot: request.screenshot,
+        provider: 'compare', model: 'Three-model comparison', results,
+        response: results.map(result => `## ${result.model}\n\n${result.ok ? result.text : result.error}`).join('\n\n'),
+      }) : null;
+      return { ok: successful.length > 0, comparison: true, results, entryId: saved?.id };
+    } finally { this.active = null; done(); }
+  }
+  cancel(requestId, provider) {
     if (!this.active || (requestId && requestId !== this.active.id)) return false;
+    if (this.active.controllers) {
+      if (provider && !this.active.controllers.has(provider)) return false;
+      for (const [name, controller] of this.active.controllers) if (!provider || provider === name) controller.abort();
+      return true;
+    }
     this.active.controller.abort(); return true;
   }
   async reset(provider) {
@@ -60,6 +103,7 @@ class RequestController {
       const session = await this.providers[entry.provider].fork(entry);
       this.storage.setSession(entry.provider, session);
       const settings = this.storage.getSettings();
+      settings.mode = 'single';
       settings.provider = entry.provider;
       if (entry.provider === 'claude') settings.claudeModel = entry.selectedModel === 'opus' || /opus/.test(entry.model) ? 'opus' : 'sonnet';
       this.storage.setSettings(settings);

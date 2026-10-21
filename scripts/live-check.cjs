@@ -1,5 +1,6 @@
 // Explicit, opt-in integration checks. Uses subscription quota and synthetic content only.
 const { CodexProvider } = require('../src/providers/codex');
+const { GrokProvider } = require('../src/providers/grok');
 const { ClaudeProvider } = require('../src/providers/claude');
 const { redImage } = require('../test/fixtures/image.cjs');
 const fs = require('node:fs/promises');
@@ -10,6 +11,7 @@ async function main() {
   const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'spectro-live-'));
   const reports = [];
   let codex = new CodexProvider(path.join(cwd, 'codex'));
+  let grok = new GrokProvider(path.join(cwd, 'grok'));
   const claude = new ClaudeProvider(path.join(cwd, 'claude'));
   async function run(name, provider, model, session, text, screenshot = null, cancel = false) {
     const controller = new AbortController();
@@ -31,7 +33,7 @@ async function main() {
     } finally { clearTimeout(timer); }
   }
   try {
-    if (!process.argv.includes('--claude-only')) {
+    if (!process.argv.includes('--claude-only') && !process.argv.includes('--grok-only')) {
     const first = await run('astra-image', codex, 'gpt-6-astra', null, 'Remember the code ORBIT_29. What is the dominant color of this image? Reply with the color only.', redImage());
     assert.match(first.text, /red/i);
     assert.equal(first.actualModel, 'gpt-6-astra');
@@ -45,14 +47,23 @@ async function main() {
     assert.match(forked.text, /ORBIT_29/);
     await run('astra-cancel', codex, 'gpt-6-astra', null, 'Write 100 numbered sentences about geometry.', null, true);
     }
-    for (const model of ['sonnet', 'opus']) {
+    if (!process.argv.includes('--grok-only')) for (const model of ['sonnet', 'opus']) {
       const result = await run(`claude-${model}-image`, claude, model, null, 'What is the dominant color of this image? Reply with the color only.', redImage());
       if (result) assert.match(result.text, /red/i);
     }
+    if (!process.argv.includes('--claude-only')) {
+      const first = await run('grok-image', grok, 'grok-4.7', null, 'Remember SPECTRO_47. What color is this image? Reply with the color only.', redImage());
+      assert.match(first.text, /red/i);
+      assert.equal(first.actualModel, 'grok-4.7');
+      grok.close(); grok = new GrokProvider(path.join(cwd, 'grok'));
+      const followup = await run('grok-resume', grok, 'grok-4.7', { sessionId: first.sessionId }, 'What code did I ask you to remember? Reply with the code only.');
+      assert.match(followup.text, /SPECTRO_47/);
+      await run('grok-cancel', grok, 'grok-4.7', null, 'Write 100 numbered sentences about geometry.', null, true);
+    }
   } finally {
-    codex.close(); claude.close();
+    codex.close(); claude.close(); grok.close();
     await fs.mkdir('.artifacts', { recursive: true });
-    await fs.writeFile(process.argv.includes('--claude-only') ? '.artifacts/live-claude-check.json' : '.artifacts/live-check.json', JSON.stringify({ checkedAt: new Date().toISOString(), reports }, null, 2));
+    await fs.writeFile(process.argv.includes('--claude-only') ? '.artifacts/live-claude-check.json' : process.argv.includes('--grok-only') ? '.artifacts/live-grok-check.json' : '.artifacts/live-check.json', JSON.stringify({ checkedAt: new Date().toISOString(), reports }, null, 2));
     console.log(JSON.stringify(reports, null, 2));
   }
 }

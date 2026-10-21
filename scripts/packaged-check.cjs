@@ -22,28 +22,39 @@ async function main() {
     }));
     if (report.package.userData !== directory) throw new Error('Package did not use isolated test data.');
     report.connections = await page.evaluate(() => window.electronAPI.getConnections());
-    await app.evaluate(({ BrowserWindow }, image) => BrowserWindow.getAllWindows()[0].webContents.send('screenshot-captured', image), redImage());
+    await page.locator('#image-file').setInputFiles({ name: 'red.png', mimeType: 'image/png', buffer: Buffer.from(redImage().split(',')[1], 'base64') });
     await page.locator('#input-textarea').fill('What color is the attached square? Give the color in bold, then the equation 2+2=4 as inline LaTeX. One sentence.');
     await page.getByRole('button', { name: 'Send', exact: true }).click();
-    await expect(page.locator('#status-message')).toContainText('Saved', { timeout: 90000 });
-    await expect(page.locator('#response-textarea')).toContainText(/red/i);
-    await expect(page.locator('#response-model')).toHaveText('gpt-6-astra');
-    await expect(page.locator('mjx-container')).toHaveCount(1);
-    report.astra = 'passed: image, IPC, stream, archive, Markdown and LaTeX';
+    await expect(page.locator('#status-message')).toContainText('3/3 completed', { timeout: 120000 });
+    for (const provider of ['openai', 'claude', 'grok']) {
+      await expect(page.locator(`.answer-card[data-provider="${provider}"] .response-area`)).toContainText(/red/i);
+      await expect(page.locator(`.answer-card[data-provider="${provider}"] mjx-container`)).toHaveCount(1);
+    }
+    const history = await page.evaluate(() => window.electronAPI.getHistory());
+    expect(history.at(-1).provider).toBe('compare');
+    report.comparison = history.at(-1).results.map(result => ({ provider: result.provider, model: result.model, ok: result.ok, text: result.text }));
+    expect(await page.locator('mjx-container').count()).toBeGreaterThan(0);
     await fs.mkdir('.artifacts', { recursive: true });
-    await page.screenshot({ path: '.artifacts/packaged-astra.png' });
+    await page.screenshot({ path: '.artifacts/packaged-comparison.png' });
+    if (!process.argv.includes('--comparison-only')) {
     await page.getByRole('button', { name: 'Claude', exact: true }).click();
-    const result = await page.evaluate(() => window.electronAPI.submit({
-      requestId: crypto.randomUUID(), text: 'Reply with OK.', instructions: '', screenshot: null,
-    }));
-    if (result.ok) report.claude = { status: 'passed', model: result.model };
-    else if (result.code === 'QUOTA_EXCEEDED') report.claude = { status: 'blocked', code: result.code, message: result.error };
-    else throw new Error(`Packaged Claude failed: ${result.code}: ${result.error}`);
+    await page.getByRole('button', { name: 'Opus', exact: true }).click();
+    const result = await page.evaluate(image => window.electronAPI.submit({
+      requestId: crypto.randomUUID(), text: 'What color is this square? Reply with the color only.', instructions: '', screenshot: image,
+    }), redImage());
+    if (result.ok) {
+      expect(result.text).toMatch(/red/i);
+      expect(result.model).toMatch(/opus/);
+      report.opus = { status: 'passed', model: result.model };
+    } else if (result.code === 'QUOTA_EXCEEDED') report.opus = { status: 'blocked', code: result.code, message: result.error };
+    else throw new Error(`Packaged Opus failed: ${result.code}: ${result.error}`);
+    }
     const settingsWindow = app.waitForEvent('window');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     const settings = await settingsWindow;
     await expect(settings.locator('#openai-status')).toContainText('Connected', { timeout: 20000 });
     await expect(settings.locator('#claude-status')).toContainText('Connected', { timeout: 20000 });
+    await expect(settings.locator('#grok-status')).toContainText('Connected', { timeout: 20000 });
     await settings.screenshot({ path: '.artifacts/packaged-settings.png', fullPage: true });
     if (process.argv.includes('--capture')) {
       // Local preview only, after all provider requests. Never archive, save or send this capture.
@@ -55,7 +66,7 @@ async function main() {
     }
   } finally {
     await app?.close();
-    await fs.rm(directory, { recursive: true, force: true });
+    await fs.rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     await fs.mkdir('.artifacts', { recursive: true });
     await fs.writeFile('.artifacts/packaged-check.json', JSON.stringify(report, null, 2));
     console.log(JSON.stringify(report, null, 2));

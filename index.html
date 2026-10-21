@@ -25,10 +25,13 @@
     </header>
     <div class="provider-row">
       <div class="segmented" aria-label="Provider">
+        <button id="compare-mode" class="provider-btn" data-provider="compare">All three</button>
         <button class="provider-btn active" data-provider="openai">OpenAI</button>
         <button class="provider-btn" data-provider="claude">Claude</button>
+        <button class="provider-btn" data-provider="grok">Grok</button>
       </div>
       <span id="astra-label" class="model-name">GPT-6 Astra</span>
+      <span id="grok-label" class="model-name hidden">Grok 4.7</span>
       <div id="claude-models" class="segmented hidden" aria-label="Claude model">
         <button class="claude-model-btn active" data-model="sonnet">Sonnet</button>
         <button class="claude-model-btn" data-model="opus">Opus</button>
@@ -45,6 +48,8 @@
     </section>
     <div id="controls" class="row">
       <button id="capture-button">Capture screen</button>
+      <button id="attach-button">Attach image</button>
+      <input id="image-file" class="hidden" type="file" accept="image/png,image/jpeg">
       <span id="submit-hint" class="muted">⌘ Enter to send</span>
       <button id="stop-button" class="hidden danger">Stop</button>
       <button id="submit-button" class="primary" disabled>Send</button>
@@ -65,6 +70,8 @@
         <button id="resume-history">Continue this chat</button>
       </div>
       <div id="response-textarea" class="response-area" tabindex="0"></div>
+      <div id="comparison-panels" class="hidden"></div>
+      <p id="comparison-note" class="muted hidden">Same question and image, three independent answers. Agreement does not prove correctness.</p>
     </section>
     <div id="notification" class="hidden" role="status"></div>
   </main>

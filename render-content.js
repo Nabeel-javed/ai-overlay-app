@@ -38,10 +38,11 @@
     return true;
   });
   md.renderer.rules.math_block = (tokens, index) => `<div class="math">${md.utils.escapeHtml(tokens[index].content)}</div>\n`;
-  let renderVersion = 0;
+  const renderVersions = new WeakMap();
   let typesetQueue = Promise.resolve();
   window.renderAnswer = (element, text, format = 'markdown') => {
-    const version = ++renderVersion;
+    const version = (renderVersions.get(element) || 0) + 1;
+    renderVersions.set(element, version);
     const html = format === 'legacy' ? text : md.render(text);
     window.MathJax.typesetClear?.([element]);
     element.innerHTML = window.DOMPurify.sanitize(html, {
@@ -53,7 +54,7 @@
     element.querySelectorAll('a').forEach(link => link.addEventListener('click', event => event.preventDefault()));
     typesetQueue = typesetQueue.catch(() => {}).then(async () => {
       await window.MathJax.startup?.promise;
-      if (version === renderVersion) await window.MathJax.typesetPromise?.([element]);
+      if (element.isConnected && version === renderVersions.get(element)) await window.MathJax.typesetPromise?.([element]);
     }).catch(() => {});
     return typesetQueue;
   };

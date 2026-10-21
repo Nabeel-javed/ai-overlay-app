@@ -6,9 +6,11 @@ class Windows {
   constructor(storage, { root, newChat }) {
     this.storage = storage; this.root = root; this.newChat = newChat;
     this.main = null; this.settings = null; this.capturing = false;
+    this.visibilityGeneration = 0;
   }
   secure(window) {
     window.setContentProtection(true);
+    if (process.platform === 'darwin') window.setHiddenInMissionControl(true);
     window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     window.webContents.on('will-navigate', event => event.preventDefault());
     window.webContents.on('will-attach-webview', event => event.preventDefault());
@@ -19,10 +21,11 @@ class Windows {
   notify(message) { this.send('notification', message); }
   openMain() {
     if (this.main && !this.main.isDestroyed()) return this.focus();
+    const generation = this.visibilityGeneration;
     const saved = this.storage.getWindowState() || {};
     const work = screen.getPrimaryDisplay().workArea;
     this.main = new BrowserWindow({
-      width: Math.min(saved.width || 560, work.width), height: Math.min(saved.height || 640, work.height),
+      width: Math.min(saved.width || 1080, work.width), height: Math.min(saved.height || 740, work.height),
       minWidth: 460, minHeight: 440, frame: false, transparent: process.platform === 'darwin',
       backgroundColor: '#202124', alwaysOnTop: true, skipTaskbar: true, resizable: true,
       opacity: Math.max(0.2, Math.min(1, saved.opacity || 1)), show: false,
@@ -35,7 +38,9 @@ class Windows {
     this.secure(this.main);
     this.main.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     this.main.loadFile(path.join(this.root, 'index.html'));
-    this.main.once('ready-to-show', () => this.main?.show());
+    this.main.once('ready-to-show', () => {
+      if (generation === this.visibilityGeneration) this.main?.show();
+    });
     this.main.on('close', () => this.saveState());
     this.main.on('closed', () => { this.main = null; });
     const menu = Menu.buildFromTemplate([
@@ -46,7 +51,8 @@ class Windows {
     this.main.webContents.on('context-menu', () => menu.popup());
   }
   openSettings() {
-    if (this.settings && !this.settings.isDestroyed()) { this.settings.focus(); return; }
+    const generation = ++this.visibilityGeneration;
+    if (this.settings && !this.settings.isDestroyed()) { this.settings.show(); this.settings.focus(); return; }
     this.settings = new BrowserWindow({
       width: 540, height: Math.min(750, screen.getPrimaryDisplay().workArea.height), minHeight: 480,
       title: 'Spectro Settings', parent: this.main || undefined, modal: false, show: false,
@@ -55,14 +61,24 @@ class Windows {
     });
     this.secure(this.settings);
     this.settings.loadFile(path.join(this.root, 'settings.html'));
-    this.settings.once('ready-to-show', () => this.settings?.show());
+    this.settings.once('ready-to-show', () => {
+      if (generation === this.visibilityGeneration) this.settings?.show();
+    });
     this.settings.on('closed', () => { this.settings = null; });
   }
   focus() {
+    this.visibilityGeneration++;
+    this.reveal();
+  }
+  reveal() {
     if (!this.main || this.main.isDestroyed()) this.openMain();
     this.main.show(); this.main.focus(); this.send('focus-input');
   }
-  toggle() { this.main?.isVisible() ? this.main.hide() : this.focus(); }
+  hide() {
+    this.visibilityGeneration++;
+    this.settings?.hide(); this.main?.hide();
+  }
+  toggle() { this.main?.isVisible() || this.settings?.isVisible() ? this.hide() : this.focus(); }
   saveState() {
     if (!this.main || this.main.isDestroyed()) return;
     this.storage.saveWindowState({ ...this.main.getBounds(), opacity: this.main.getOpacity() });
@@ -89,6 +105,7 @@ class Windows {
       throw new Error('Allow Spectro in macOS System Settings → Privacy & Security → Screen Recording, then restart the app.');
     }
     this.capturing = true;
+    const generation = this.visibilityGeneration;
     const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
     const settingsVisible = this.settings?.isVisible();
     this.main?.hide(); this.settings?.hide();
@@ -100,11 +117,15 @@ class Windows {
       const source = sources.find(item => item.display_id === String(display.id)) || (sources.length === 1 ? sources[0] : null);
       if (!source || source.thumbnail.isEmpty()) throw new Error('No screenshot was captured. Check macOS Screen Recording permission.');
       const dataUrl = `data:image/jpeg;base64,${source.thumbnail.toJPEG(85).toString('base64')}`;
-      this.focus(); this.resizeForScreenshot(true); this.send('screenshot-captured', dataUrl);
+      if (generation === this.visibilityGeneration) this.reveal();
+      this.resizeForScreenshot(true); this.send('screenshot-captured', dataUrl);
       return { ok: true };
     } finally {
-      this.capturing = false; this.main?.show();
-      if (settingsVisible) this.settings?.show();
+      this.capturing = false;
+      if (generation === this.visibilityGeneration) {
+        this.main?.show();
+        if (settingsVisible) this.settings?.show();
+      }
     }
   }
 }

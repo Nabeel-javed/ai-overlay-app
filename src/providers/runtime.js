@@ -17,7 +17,7 @@ function cleanEnvironment() {
   for (const key of ['HOME', 'USER', 'LOGNAME', 'SHELL', 'TMPDIR', 'LANG', 'LC_ALL', 'SystemRoot', 'APPDATA', 'LOCALAPPDATA']) {
     if (process.env[key]) env[key] = process.env[key];
   }
-  env.PATH = [path.join(os.homedir(), '.local', 'bin'), '/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin', process.env.PATH || ''].join(path.delimiter);
+  env.PATH = [path.join(os.homedir(), '.local', 'bin'), path.join(os.homedir(), '.grok', 'bin'), '/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin', process.env.PATH || ''].join(path.delimiter);
   return env;
 }
 
@@ -28,12 +28,12 @@ async function findBinary(name) {
     const file = path.join(dir, filename);
     try { await fs.access(file, fs.constants.X_OK); return file; } catch {}
   }
-  throw new ProviderError(`${name === 'codex' ? 'Codex' : 'Claude Code'} is not installed. Open Settings for setup instructions.`, 'NOT_INSTALLED');
+  throw new ProviderError(`${{ codex: 'Codex', claude: 'Claude Code', grok: 'Grok' }[name] || name} is not installed. Open Settings for setup instructions.`, 'NOT_INSTALLED');
 }
 
-function collect(binary, args, { cwd, timeout = 20000, signal, maxBytes = 1024 * 1024 } = {}) {
+function collect(binary, args, { cwd, env = cleanEnvironment(), timeout = 20000, signal, maxBytes = 1024 * 1024 } = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(binary, args, { cwd, env: cleanEnvironment(), shell: false, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(binary, args, { cwd, env, shell: false, stdio: ['ignore', 'pipe', 'pipe'] });
     let stdout = '';
     let stderr = '';
     let settled = false;

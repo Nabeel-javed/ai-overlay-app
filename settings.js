@@ -7,7 +7,7 @@ async function refresh() {
   $('refresh-connections').disabled = true;
   try {
     const statuses = await api.getConnections();
-    for (const provider of ['openai', 'claude']) {
+    for (const provider of ['openai', 'claude', 'grok']) {
       const status = statuses[provider];
       $(`${provider}-status`).textContent = `${status.message}${status.version ? ` · v${status.version}` : ''}`;
     }
@@ -16,6 +16,7 @@ async function refresh() {
 }
 api.getSettings().then(settings => {
   current = settings; $('provider').value = settings.provider;
+  $('mode').value = settings.mode;
   $('claude-model').value = settings.claudeModel; $('effort').value = settings.effort;
   $('save-button').disabled = false;
 }).catch(error => message(error.message));
@@ -31,7 +32,7 @@ document.querySelectorAll('[data-guide]').forEach(button => button.addEventListe
 $('save-button').addEventListener('click', async () => {
   $('save-button').disabled = true;
   try {
-    current = await api.saveSettings({ ...current, provider: $('provider').value, claudeModel: $('claude-model').value, effort: $('effort').value });
+    current = await api.saveSettings({ ...current, mode: $('mode').value, provider: $('provider').value, claudeModel: $('claude-model').value, effort: $('effort').value });
     message('Saved'); api.closeWindow();
   } catch (error) { message(error.message); $('save-button').disabled = false; }
 });

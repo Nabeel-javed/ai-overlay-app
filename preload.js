@@ -11,7 +11,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveSettings: value => ipcRenderer.invoke('save-settings', value),
   getConnections: () => ipcRenderer.invoke('get-connections'),
   submit: request => ipcRenderer.invoke('call-ai', request),
-  cancel: id => ipcRenderer.invoke('cancel-request', id),
+  cancel: (id, provider) => ipcRenderer.invoke('cancel-request', id, provider),
   newChat: () => ipcRenderer.invoke('new-chat'),
   capture: () => ipcRenderer.invoke('capture-screenshot'),
   removeScreenshot: () => ipcRenderer.send('remove-screenshot'),
