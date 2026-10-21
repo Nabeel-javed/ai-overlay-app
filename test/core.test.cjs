@@ -183,11 +183,13 @@ test('comparison dispatches identical image requests concurrently and saves inde
     },
   }]));
   storage.setSession('openai', { sessionId: 'unrelated conversation' });
+  storage.setSession('claude', { sessionId: 'previous Claude comparison' }, 'compare');
   const controller = new RequestController(storage, providers, event => events.push(event));
   const image = 'data:image/png;base64,aGVsbG8=';
   const pending = controller.submit({ ...payload, screenshot: image });
   assert.equal(started.length, 3, 'All adapters start before any finishes');
-  assert.ok(started.every(({ request, session }) => request.text === payload.text && request.screenshot === image && session === null));
+  assert.ok(started.every(({ request }) => request.text === payload.text && request.screenshot === image));
+  assert.deepEqual(started.map(({ session }) => session), [null, { sessionId: 'previous Claude comparison' }, null]);
   storage.setSettings({ ...storage.getSettings(), mode: 'single', effort: 'high' });
   assert.equal(started[1].request.model, 'opus');
   gates.grok.resolve(); await new Promise(setImmediate);
@@ -197,13 +199,71 @@ test('comparison dispatches identical image requests concurrently and saves inde
   const result = await pending;
   assert.equal(result.results.filter(answer => answer.ok).length, 2);
   assert.equal(result.results[1].code, 'QUOTA_EXCEEDED');
+  assert.equal(result.results[1].contextReset, true);
   assert.equal(storage.history().length, 1);
   assert.equal(storage.entry(result.entryId).screenshot, image);
   assert.equal(storage.getSession('openai').sessionId, 'unrelated conversation');
+  assert.deepEqual(storage.getSession('openai', 'compare'), { sessionId: 'openai' });
+  assert.equal(storage.getSession('claude', 'compare'), null);
+  assert.deepEqual(storage.getSession('grok', 'compare'), { sessionId: 'grok' });
+});
+
+test('comparison conversations persist independently across reloads and view switches until New chat', async t => {
+  let storage = fixture(t, { mode: 'compare' });
+  const names = ['openai', 'claude', 'grok'];
+  const calls = [];
+  for (const name of names) storage.setSession(name, { sessionId: `single-${name}` });
+  const providers = Object.fromEntries(names.map(name => [name, {
+    run: async (request, session) => {
+      calls.push({ name, session });
+      return { text: name, actualModel: request.model, sessionId: session?.sessionId || `compare-${name}` };
+    },
+  }]));
+  let controller = new RequestController(storage, providers, () => {});
+  assert.equal((await controller.submit(payload)).ok, true);
+  assert.ok(calls.every(call => call.session === null));
+  storage.setSettings({ ...storage.getSettings(), mode: 'single', provider: 'claude' });
+  await controller.submit({ ...payload, requestId: 'single-turn' });
+  assert.deepEqual(calls.at(-1).session, { sessionId: 'single-claude' });
+  storage.setSettings({ ...storage.getSettings(), mode: 'compare' });
+  // Recreate storage/controller from serialized state, with no in-memory controller state.
+  storage = new AppStorage(new MemoryStore(JSON.parse(JSON.stringify(storage.store.value))), path.dirname(storage.directory), storage.key);
+  controller = new RequestController(storage, providers, () => {});
+  await controller.submit({ ...payload, requestId: 'follow-up', text: 'Explain your previous answer' });
+  assert.deepEqual(calls.slice(-3).map(call => call.session), names.map(name => ({ sessionId: `compare-${name}` })));
+  for (const name of names) assert.deepEqual(storage.getSession(name), { sessionId: `single-${name}` });
+  await controller.reset();
+  for (const name of names) {
+    assert.equal(storage.getSession(name), null);
+    assert.equal(storage.getSession(name, 'compare'), null);
+  }
+  await controller.submit({ ...payload, requestId: 'new-chat' });
+  assert.ok(calls.slice(-3).every(call => call.session === null));
+});
+
+test('a comparison timeout clears only that model and the next round resumes successful models', async t => {
+  const storage = fixture(t, { mode: 'compare' });
+  const calls = [];
+  let first = true;
+  const providers = Object.fromEntries(['openai', 'claude', 'grok'].map(name => [name, {
+    run: async (request, session, { signal }) => {
+      calls.push({ name, session });
+      if (first && name === 'claude') return new Promise((_, reject) => signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true }));
+      return { text: name, sessionId: session?.sessionId || name, actualModel: request.model };
+    },
+  }]));
+  const controller = new RequestController(storage, providers, () => {}, 15);
+  const result = await controller.submit(payload);
+  assert.equal(result.results[1].code, 'TIMEOUT');
+  assert.equal(result.results[1].contextReset, true);
+  first = false;
+  await controller.submit({ ...payload, requestId: 'retry' });
+  assert.deepEqual(calls.slice(-3).map(call => call.session), [{ sessionId: 'openai' }, null, { sessionId: 'grok' }]);
 });
 
 test('cancelling one comparison model leaves the others running; reset waits for all', async t => {
   const storage = fixture(t, { mode: 'compare' });
+  for (const name of ['openai', 'claude', 'grok']) storage.setSession(name, { sessionId: name }, 'compare');
   const signals = {};
   const providers = Object.fromEntries(['openai', 'claude', 'grok'].map(provider => [provider, {
     run: (_request, _session, { signal }) => new Promise((_, reject) => {
@@ -216,8 +276,12 @@ test('cancelling one comparison model leaves the others running; reset waits for
   assert.equal(controller.cancel(payload.requestId, 'grok'), true);
   assert.equal(signals.grok.aborted, true);
   assert.equal(signals.openai.aborted, false);
+  await new Promise(setImmediate);
+  assert.equal(storage.getSession('grok', 'compare'), null);
+  assert.equal(storage.getSession('openai', 'compare').sessionId, 'openai');
   await controller.reset();
   assert.equal((await pending).results.every(answer => answer.code === 'CANCELLED'), true);
   assert.equal(storage.history().length, 0);
   assert.equal(controller.active, null);
+  for (const name of ['openai', 'claude', 'grok']) assert.equal(storage.getSession(name, 'compare'), null);
 });

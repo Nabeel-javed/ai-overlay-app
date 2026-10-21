@@ -8,6 +8,7 @@
     "test": "node --test test/*.test.cjs",
     "test:ui": "playwright test",
     "test:live": "node scripts/live-check.cjs",
+    "test:conversation": "node scripts/conversation-check.cjs",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
     "dist:mac": "electron-builder --mac --arm64",

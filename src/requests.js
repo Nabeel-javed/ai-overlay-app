@@ -48,7 +48,7 @@ class RequestController {
     const active = { id: request.requestId, controllers: new Map(), done: new Promise(resolve => { done = resolve; }) };
     this.active = active;
     try {
-      // Start every adapter before awaiting any result. Each round has fresh, equal context.
+      // Start every adapter before awaiting any result; each resumes its own comparison conversation.
       const results = await Promise.all(PROVIDERS.map(async provider => {
         const model = this.model(provider);
         const controller = new AbortController();
@@ -59,12 +59,19 @@ class RequestController {
         emit({ type: 'started', model, comparison: true });
         let answer;
         try {
-          const result = await this.providers[provider].run({ ...request, provider, model, effort: settings.effort }, null, { signal: controller.signal, emit });
+          const result = await this.providers[provider].run({ ...request, provider, model, effort: settings.effort },
+            this.storage.getSession(provider, 'compare'), { signal: controller.signal, emit });
           if (controller.signal.aborted) throw new ProviderError('Request cancelled.', 'CANCELLED');
           if (!result.text?.trim()) throw new ProviderError('The provider returned an empty answer.');
+          if (typeof result.sessionId !== 'string' || !result.sessionId) {
+            throw new ProviderError('The provider did not return a conversation ID.', 'SESSION_ERROR');
+          }
+          this.storage.setSession(provider, { sessionId: result.sessionId }, 'compare');
           answer = { ...result, ok: true, provider, model: result.actualModel || model, selectedModel: model };
         } catch (error) {
-          answer = { ok: false, provider, model, code: timedOut ? 'TIMEOUT' : (error.code || 'PROVIDER_ERROR'),
+          // A failed turn may have changed the native transcript. Reset only this model and tell the UI.
+          this.storage.setSession(provider, null, 'compare');
+          answer = { ok: false, provider, model, contextReset: true, code: timedOut ? 'TIMEOUT' : (error.code || 'PROVIDER_ERROR'),
             error: timedOut ? 'The request timed out.' : error.message };
         } finally { clearTimeout(timer); active.controllers.delete(provider); }
         emit({ type: 'finished', result: answer });
@@ -91,7 +98,7 @@ class RequestController {
   async reset(provider) {
     if (this.restoring) await this.restoring;
     if (this.active) { this.cancel(); await this.active.done; }
-    provider ? this.storage.setSession(provider, null) : this.storage.resetSessions();
+    this.storage.resetSessions(provider);
   }
   async restore(id) {
     if (this.active || this.restoring) throw new ProviderError('Wait for the current request or conversation change to finish.', 'BUSY');

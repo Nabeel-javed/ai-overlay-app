@@ -25,9 +25,19 @@ class AppStorage {
   }
   getSettings() { return normalizeSettings(this.store.get('settings')); }
   setSettings(settings) { const next = validateSettings(settings); this.store.set('settings', next); return next; }
-  getSession(provider) { return this.store.get('sessions', {})[provider] || null; }
-  setSession(provider, session) { this.store.set('sessions', { ...this.store.get('sessions', {}), [provider]: session }); }
-  resetSessions() { this.store.set('sessions', {}); }
+  getSession(provider, mode = 'single') {
+    return this.store.get(mode === 'compare' ? 'comparisonSessions' : 'sessions', {})[provider] || null;
+  }
+  setSession(provider, session, mode = 'single') {
+    const key = mode === 'compare' ? 'comparisonSessions' : 'sessions';
+    this.store.set(key, { ...this.store.get(key, {}), [provider]: session });
+  }
+  resetSessions(provider) {
+    for (const mode of ['single', 'compare']) {
+      if (provider) this.setSession(provider, null, mode);
+      else this.store.set(mode === 'compare' ? 'comparisonSessions' : 'sessions', {});
+    }
+  }
   getWindowState() { return this.store.get('windowState'); }
   saveWindowState(state) { this.store.set('windowState', state); }
   saveAttachment(dataUrl) {

@@ -49,9 +49,9 @@ Outputs are under `dist/`. Local builds are unsigned unless you configure your o
 ## Using the overlay
 
 - Type a question, capture a screenshot, attach a PNG/JPEG, or paste an image, then press **Send**. Screen capture requires macOS Screen Recording permission. Captures target the display under the pointer, hide the app during capture, and are sent only when you submit.
-- **All three:** dispatches identical text, instructions and image concurrently. Each model starts with fresh conversation context, streams independently, and has its own Copy/Stop controls. A failure or timeout leaves the other models running. **Stop** or **Esc** cancels all remaining answers.
+- **All three:** dispatches the same new text, instructions and image concurrently to three ongoing conversations. Astra, Opus and Grok each remember your earlier prompts and their own answers, including across app restarts; they do not receive each other's answers. Each streams independently and has its own Copy/Stop controls. A failed, timed-out or cancelled request resets only that model's comparison conversation, with a notice on its card; successful models keep their context. **Stop** or **Esc** cancels all remaining answers. Context remains subject to each native client's context limits and compaction.
 - Finished answers render as sanitized Markdown and LaTeX. Identical complete text is labelled as agreement, never as verified correctness. Different wording is left for you to compare; there is no extra judge-model request or semantic scoring.
-- **Single provider:** OpenAI, Claude and Grok keep separate conversations across restarts. **New chat** resets all three. Comparison rounds neither read nor modify those conversations.
+- **Single provider:** OpenAI, Claude and Grok keep separate conversations across restarts. These are separate from their All three conversations, so switching views does not mix context. **New chat** resets conversations in both views. Comparison rounds saved before this update remain archived answers; they are not automatically imported into the new ongoing conversations.
 - History keeps the latest 50 single answers or comparison rounds. A round is saved if at least one model completes; failed cards retain their error, not partial output. **Continue this chat** forks saved Astra/Claude answers at that exact turn. Saved Grok answers and comparison rounds are review-only; current Grok conversations still support normal follow-ups and restart/resume.
 - Changing the selected provider/model during a request affects the next send. In-flight requests retain their starting settings. Higher reasoning effort can improve difficult answers but adds latency; Low is the default for Astra and Grok.
 - **Window focus:** Cmd+Shift+H shows the overlay without requesting focus. Screenshot completion also restores the overlay and any previously visible Settings window without activating them, including after a capture error. Cmd+Shift+O explicitly focuses the overlay for typing; clicking the overlay or opening Settings can also take focus. This reduces interruptions during normal desktop use; it does not guarantee compatibility with browsers that require continuous focus.
@@ -113,12 +113,15 @@ npm test                 # Offline core regression tests
 npm run test:ui          # Native Electron UI tests, isolated app data
 npm run test:live        # Real subscription requests; consumes quota
 node scripts/live-check.cjs --grok-only # Grok image, restart/resume and cancel
+npm run test:conversation # Opt-in: all three recall text, image and their own answer after an app restart
 npm run test:privacy     # Local capture test; no cloud requests
 npm run pack -- --mac --arm64
 node scripts/packaged-check.cjs # Real requests through the built Mac app
 ```
 
 Live tests submit only synthetic text and a generated red image, not your desktop. They cover Astra image input, restart/resume, history forking and cancellation, plus Opus image input and Grok image, restart/resume and cancellation. The packaged check sends one image round to all three and checks Opus separately. A provider quota block is reported as **blocked**, not as successful inference. The packaged check also accepts `--capture` to verify a local desktop preview after all provider requests; that capture is removed without being sent or saved.
+
+The conversation check sends a random code and a generated red image to all three models, closes and relaunches Spectro using the same isolated settings directory, then asks each model to recall the code, color and a marker from its own previous answer. The second prompt contains none of those values. It verifies that each provider resumes the same session. Add `-- --packaged` to test the built app; results are saved under `.artifacts/conversation-check.json`.
 
 Validated on 2026-10-20 with Electron 44.9.1, Codex 0.163.0, Claude Code 2.1.304, Claude Agent SDK 0.3.304 and Grok CLI 1.0.62. A live parallel screenshot round returned the correct test colour from GPT-6 Astra, Claude Sonnet 5.5 and Grok 4.7. All three adapters started within the same millisecond; that tiny test completed in approximately 2.5–5 seconds, which is not a general latency guarantee. Claude's earlier monthly quota block did not recur in this check. Grok image input, restart/resume and cancellation also passed live checks.
 

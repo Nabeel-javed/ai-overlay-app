@@ -47,7 +47,8 @@ function updateCard(result, render = false) {
   card.querySelector('.card-stop').classList.toggle('hidden', !result.pending);
   const state = card.querySelector('.card-status');
   state.textContent = result.pending ? (result.text ? 'Receiving…' : 'Working…')
-    : result.ok ? `Complete${result.elapsed ? ` · ${result.elapsed}s` : ''}` : result.error || 'Ready';
+    : result.ok ? `Complete${result.elapsed ? ` · ${result.elapsed}s` : ''}`
+      : result.error ? `${result.error}${result.contextReset ? ' Next message starts a new conversation for this model.' : ''}` : 'Ready';
   state.classList.toggle('error', result.ok === false && result.code !== 'CANCELLED');
   const area = card.querySelector('.response-area');
   if (render) window.renderAnswer(area, result.text || '');
@@ -60,7 +61,7 @@ function updateCard(result, render = false) {
   const identical = allComplete && comparison.every(answer => answer.text.trim() === comparison[0].text.trim());
   $('comparison-note').textContent = identical
     ? 'All three returned identical text. Agreement does not prove correctness.'
-    : 'Same question and image, three independent answers. Agreement does not prove correctness.';
+    : 'Each model remembers your questions and its own answers. Agreement does not prove correctness.';
 }
 function comparisonText() { return comparison?.map(result => `## ${result.model}\n\n${result.ok === false ? result.error : result.text || ''}`).join('\n\n'); }
 
@@ -190,7 +191,8 @@ async function submit() {
         Object.assign(card, answer, { pending: false }); updateCard(card, true);
       }
       const count = result.results.filter(answer => answer.ok).length;
-      status(`${count}/3 completed${count ? ' · comparison saved' : ''} · each send starts a fresh comparison`, count === 0);
+      status(`${count}/3 completed${count ? ' · comparison saved' : ''} · ${result.results.some(answer => answer.contextReset)
+        ? 'failed models restart on the next message' : 'follow-ups keep each model’s conversation'}`, count === 0);
       await loadHistory();
     } else if (result.ok) {
       showComparison(null);

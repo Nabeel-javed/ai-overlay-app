@@ -157,7 +157,7 @@ test('three-model view streams independently, shows one failure and restores the
   await electronApp.evaluate(({ ipcMain }) => {
     const results = [
       { provider: 'openai', model: 'gpt-6-astra', ok: true, text: '**Astra answer** \\(x^2\\)' },
-      { provider: 'claude', model: 'opus', ok: false, code: 'QUOTA_EXCEEDED', error: 'Claude quota reached' },
+      { provider: 'claude', model: 'opus', ok: false, code: 'QUOTA_EXCEEDED', contextReset: true, error: 'Claude quota reached' },
       { provider: 'grok', model: 'grok-4.7', ok: true, text: '**Grok answer** $y=2$' },
     ];
     ipcMain.removeHandler('call-ai');
@@ -178,9 +178,10 @@ test('three-model view streams independently, shows one failure and restores the
   await page.locator('#input-textarea').fill('Compare image');
   await page.getByRole('button', { name: 'Send', exact: true }).click();
   await expect(page.locator('[data-provider="openai"].answer-card .response-area')).toHaveText('First response');
-  await expect(page.locator('[data-provider="claude"].answer-card .card-status')).toHaveText('Claude quota reached');
+  await expect(page.locator('[data-provider="claude"].answer-card .card-status')).toHaveText('Claude quota reached Next message starts a new conversation for this model.');
   await expect(page.getByRole('button', { name: 'Stop Grok 4.7', exact: true })).toBeVisible();
   await expect(page.locator('#status-message')).toContainText('2/3 completed');
+  await expect(page.locator('#status-message')).toContainText('failed models restart on the next message');
   await expect(page.locator('[data-provider="grok"].answer-card strong').last()).toHaveText('Grok answer');
   await expect(page.locator('[data-provider="openai"].answer-card mjx-container')).toHaveCount(1);
   await expect(page.locator('[data-provider="grok"].answer-card mjx-container')).toHaveCount(1);
