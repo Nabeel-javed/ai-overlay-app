@@ -47,9 +47,9 @@ async function main() {
     assert.match(forked.text, /ORBIT_29/);
     await run('astra-cancel', codex, 'gpt-6-astra', null, 'Write 100 numbered sentences about geometry.', null, true);
     }
-    if (!process.argv.includes('--grok-only')) for (const model of ['sonnet', 'opus']) {
-      const result = await run(`claude-${model}-image`, claude, model, null, 'What is the dominant color of this image? Reply with the color only.', redImage());
-      if (result) assert.match(result.text, /red/i);
+    if (!process.argv.includes('--grok-only')) {
+      const result = await run('claude-opus-image', claude, 'opus', null, 'What is the dominant color of this image? Reply with the color only.', redImage());
+      if (result) { assert.match(result.text, /red/i); assert.match(result.actualModel, /opus/i); }
     }
     if (!process.argv.includes('--claude-only')) {
       const first = await run('grok-image', grok, 'grok-4.7', null, 'Remember SPECTRO_47. What color is this image? Reply with the color only.', redImage());

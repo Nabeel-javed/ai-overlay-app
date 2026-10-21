@@ -1,5 +1,5 @@
 'use strict';
-const { validateRequest, ASTRA, GROK, PROVIDERS } = require('./models');
+const { validateRequest, ASTRA, GROK, OPUS, PROVIDERS } = require('./models');
 const { ProviderError } = require('./providers/runtime');
 
 /** Coordinates one immutable request at a time; provider switches affect only later requests. */
@@ -14,7 +14,7 @@ class RequestController {
     const settings = this.storage.getSettings();
     if (settings.mode === 'compare') return this.compare(request, settings);
     const provider = settings.provider;
-    request = { ...request, provider, model: this.model(provider, settings), effort: settings.effort };
+    request = { ...request, provider, model: this.model(provider), effort: settings.effort };
     const controller = new AbortController();
     let done;
     const active = { id: request.requestId, controller, done: new Promise(resolve => { done = resolve; }), timedOut: false };
@@ -42,7 +42,7 @@ class RequestController {
       clearTimeout(timeout); this.active = null; done();
     }
   }
-  model(provider, settings) { return { openai: ASTRA, claude: settings.claudeModel, grok: GROK }[provider]; }
+  model(provider) { return { openai: ASTRA, claude: OPUS, grok: GROK }[provider]; }
   async compare(request, settings) {
     let done;
     const active = { id: request.requestId, controllers: new Map(), done: new Promise(resolve => { done = resolve; }) };
@@ -50,7 +50,7 @@ class RequestController {
     try {
       // Start every adapter before awaiting any result. Each round has fresh, equal context.
       const results = await Promise.all(PROVIDERS.map(async provider => {
-        const model = this.model(provider, settings);
+        const model = this.model(provider);
         const controller = new AbortController();
         active.controllers.set(provider, controller);
         let timedOut = false;
@@ -105,7 +105,6 @@ class RequestController {
       const settings = this.storage.getSettings();
       settings.mode = 'single';
       settings.provider = entry.provider;
-      if (entry.provider === 'claude') settings.claudeModel = entry.selectedModel === 'opus' || /opus/.test(entry.model) ? 'opus' : 'sonnet';
       this.storage.setSettings(settings);
       return settings;
     } finally { this.restoring = null; done(); }

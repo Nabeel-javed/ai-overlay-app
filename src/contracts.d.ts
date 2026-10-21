@@ -1,11 +1,11 @@
 export type Provider = 'openai' | 'claude' | 'grok';
-export type Model = 'gpt-6-astra' | 'sonnet' | 'opus' | 'grok-4.7';
+export type Model = 'gpt-6-astra' | 'opus' | 'grok-4.7';
 export interface Settings {
   mode: 'compare' | 'single';
   provider: Provider;
   openaiModel: 'gpt-6-astra';
   grokModel: 'grok-4.7';
-  claudeModel: 'sonnet' | 'opus';
+  claudeModel: 'opus';
   effort: 'low' | 'medium' | 'high';
 }
 export interface Request {

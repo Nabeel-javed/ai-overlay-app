@@ -71,10 +71,6 @@ function registerIpc() {
 }
 function registerShortcuts() {
   const choose = provider => setSettings({ ...storage.getSettings(), provider, mode: 'single' });
-  const toggleClaude = () => {
-    const settings = storage.getSettings();
-    setSettings({ ...settings, claudeModel: settings.claudeModel === 'sonnet' ? 'opus' : 'sonnet' });
-  };
   const actions = {
     'CommandOrControl+Shift+O': () => windows.focus(),
     'CommandOrControl+Shift+H': () => windows.toggle(),
@@ -85,7 +81,6 @@ function registerShortcuts() {
     'CommandOrControl+1': () => choose('openai'),
     'CommandOrControl+4': () => choose('claude'),
     'CommandOrControl+5': () => choose('grok'),
-    'CommandOrControl+Shift+R': toggleClaude,
     'CommandOrControl+Alt+Up': () => windows.move(0, -20),
     'CommandOrControl+Alt+Down': () => windows.move(0, 20),
     'CommandOrControl+Alt+Left': () => windows.move(-20, 0),

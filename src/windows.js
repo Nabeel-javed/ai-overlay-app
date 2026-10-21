@@ -19,8 +19,8 @@ class Windows {
     if (this.main && !this.main.isDestroyed()) this.main.webContents.send(channel, value);
   }
   notify(message) { this.send('notification', message); }
-  openMain() {
-    if (this.main && !this.main.isDestroyed()) return this.focus();
+  openMain({ focus = false } = {}) {
+    if (this.main && !this.main.isDestroyed()) return this.reveal({ focus });
     const generation = this.visibilityGeneration;
     const saved = this.storage.getWindowState() || {};
     const work = screen.getPrimaryDisplay().workArea;
@@ -39,7 +39,7 @@ class Windows {
     this.main.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     this.main.loadFile(path.join(this.root, 'index.html'));
     this.main.once('ready-to-show', () => {
-      if (generation === this.visibilityGeneration) this.main?.show();
+      if (generation === this.visibilityGeneration) this.reveal({ focus });
     });
     this.main.on('close', () => this.saveState());
     this.main.on('closed', () => { this.main = null; });
@@ -68,17 +68,22 @@ class Windows {
   }
   focus() {
     this.visibilityGeneration++;
-    this.reveal();
+    this.reveal({ focus: true });
   }
-  reveal() {
-    if (!this.main || this.main.isDestroyed()) this.openMain();
-    this.main.show(); this.main.focus(); this.send('focus-input');
+  reveal({ focus = false } = {}) {
+    if (!this.main || this.main.isDestroyed()) return this.openMain({ focus });
+    if (focus) {
+      this.main.show(); this.main.focus(); this.send('focus-input');
+    } else this.main.showInactive();
   }
   hide() {
     this.visibilityGeneration++;
     this.settings?.hide(); this.main?.hide();
   }
-  toggle() { this.main?.isVisible() || this.settings?.isVisible() ? this.hide() : this.focus(); }
+  toggle() {
+    if (this.main?.isVisible() || this.settings?.isVisible()) this.hide();
+    else { this.visibilityGeneration++; this.reveal(); }
+  }
   saveState() {
     if (!this.main || this.main.isDestroyed()) return;
     this.storage.saveWindowState({ ...this.main.getBounds(), opacity: this.main.getOpacity() });
@@ -117,14 +122,13 @@ class Windows {
       const source = sources.find(item => item.display_id === String(display.id)) || (sources.length === 1 ? sources[0] : null);
       if (!source || source.thumbnail.isEmpty()) throw new Error('No screenshot was captured. Check macOS Screen Recording permission.');
       const dataUrl = `data:image/jpeg;base64,${source.thumbnail.toJPEG(85).toString('base64')}`;
-      if (generation === this.visibilityGeneration) this.reveal();
       this.resizeForScreenshot(true); this.send('screenshot-captured', dataUrl);
       return { ok: true };
     } finally {
       this.capturing = false;
       if (generation === this.visibilityGeneration) {
-        this.main?.show();
-        if (settingsVisible) this.settings?.show();
+        this.main?.showInactive();
+        if (settingsVisible) this.settings?.showInactive();
       }
     }
   }

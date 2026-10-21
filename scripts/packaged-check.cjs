@@ -38,7 +38,7 @@ async function main() {
     await page.screenshot({ path: '.artifacts/packaged-comparison.png' });
     if (!process.argv.includes('--comparison-only')) {
     await page.getByRole('button', { name: 'Claude', exact: true }).click();
-    await page.getByRole('button', { name: 'Opus', exact: true }).click();
+    await expect(page.locator('#claude-label')).toHaveText('Claude Opus');
     const result = await page.evaluate(image => window.electronAPI.submit({
       requestId: crypto.randomUUID(), text: 'What color is this square? Reply with the color only.', instructions: '', screenshot: image,
     }), redImage());

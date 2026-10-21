@@ -102,6 +102,8 @@ async function createStorage(directory, safeStorage) {
   }
   fs.chmodSync(store.path, 0o600);
   const storage = new AppStorage(store, directory, key);
+  const settings = storage.getSettings();
+  if (store.get('settings')?.claudeModel !== settings.claudeModel) storage.setSettings(settings);
   // Move inline screenshots out of the settings document without changing old response text.
   const history = store.get('responseHistory', []);
   if (history.some(entry => entry.screenshot)) {

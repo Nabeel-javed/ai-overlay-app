@@ -12,11 +12,10 @@ test.beforeEach(async () => {
   await page.getByRole('button', { name: 'OpenAI', exact: true }).click();
 });
 test.afterEach(async () => { await electronApp?.close(); await fs.rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
-test('real settings IPC switches Sonnet/Opus and persists Astra; secure renderer', async () => {
+test('real settings IPC keeps Claude on Opus and persists Astra; secure renderer', async () => {
   await page.getByRole('button', { name: 'Claude', exact: true }).click();
-  await expect(page.locator('#claude-models')).toBeVisible();
-  await page.getByRole('button', { name: 'Opus', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Opus', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#claude-label')).toHaveText('Claude Opus');
+  await expect(page.getByRole('button', { name: 'Sonnet', exact: true })).toHaveCount(0);
   const settings = await page.evaluate(() => window.electronAPI.getSettings());
   expect(settings).toMatchObject({ provider: 'claude', claudeModel: 'opus', openaiModel: 'gpt-6-astra' });
   expect(await page.evaluate(() => typeof window.require)).toBe('undefined');
@@ -24,12 +23,13 @@ test('real settings IPC switches Sonnet/Opus and persists Astra; secure renderer
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   const settingsPage = await newWindow;
   await settingsPage.locator('#provider').selectOption('openai');
-  await settingsPage.locator('#claude-model').selectOption('sonnet');
+  await expect(settingsPage.locator('#claude-model')).toHaveCount(0);
+  await expect(settingsPage.getByRole('heading', { name: 'Anthropic · Claude Opus' })).toBeVisible();
   await settingsPage.getByRole('button', { name: 'Save settings' }).click();
   await expect(page.locator('#astra-label')).toBeVisible();
   await page.reload();
   await expect(page.locator('#astra-label')).toBeVisible();
-  expect((await page.evaluate(() => window.electronAPI.getSettings())).claudeModel).toBe('sonnet');
+  expect((await page.evaluate(() => window.electronAPI.getSettings())).claudeModel).toBe('opus');
   await page.locator('#input-textarea').fill('Draft to reset');
   await page.locator('#input-textarea').press('Meta+r');
   await expect(page.locator('#input-textarea')).toHaveValue('');
@@ -110,13 +110,54 @@ test('hide covers Settings and a pending capture cannot reopen the app', async (
     BrowserWindow.getAllWindows().every(window => !window.isVisible()))).toBe(true);
 });
 
+test('capture preserves another app focus on success and failure; explicit activation still focuses input', async () => {
+  const newWindow = electronApp.waitForEvent('window');
+  await page.evaluate(() => window.electronAPI.openSettings());
+  const settings = await newWindow;
+  await expect(settings.locator('#provider')).toBeVisible();
+  const foreground = await _electron.launch({
+    args: [path.resolve(__dirname, '../fixtures/focus-window.cjs')],
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: undefined },
+  });
+  try {
+    const foregroundPage = await foreground.firstWindow();
+    await expect.poll(() => foregroundPage.evaluate(() => document.hasFocus())).toBe(true);
+    for (const fail of [false, true]) {
+      await electronApp.evaluate(({ desktopCapturer, screen, nativeImage }, { image, fail }) => {
+        desktopCapturer.getSources = async () => {
+          if (fail) throw new Error('Synthetic capture failure');
+          return [{ display_id: String(screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).id), thumbnail: nativeImage.createFromDataURL(image) }];
+        };
+      }, { image: redImage(), fail });
+      const result = await page.evaluate(() => window.electronAPI.capture().catch(error => ({ error: error.message })));
+      if (fail) expect(result.error).toContain('Synthetic capture failure');
+      else expect(result.ok).toBe(true);
+      await expect(page.locator('#screenshot-section')).toBeVisible();
+      expect(await electronApp.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows().every(window => window.isVisible() && !window.isFocused()))).toBe(true);
+      // Count transient focus loss too, including delayed renderer screenshot events.
+      const focus = await foreground.evaluate(async ({ BrowserWindow }) => {
+        await new Promise(resolve => setTimeout(resolve, 250));
+        const window = BrowserWindow.getAllWindows()[0];
+        return { native: window.isFocused(), nativeBlurs: globalThis.blurCount,
+          page: await window.webContents.executeJavaScript('({ focused: document.hasFocus(), blurs: window.blurCount })') };
+      });
+      expect(focus).toEqual({ native: true, nativeBlurs: 0, page: { focused: true, blurs: 0 } });
+    }
+    await electronApp.evaluate(({ app }) => app.emit('activate'));
+    await expect.poll(() => page.evaluate(() => document.hasFocus())).toBe(true);
+    await expect(page.locator('#instructions-textarea')).toBeFocused();
+    await expect.poll(() => foreground.evaluate(() => globalThis.blurCount)).toBeGreaterThan(0);
+  } finally { await foreground.close(); }
+});
+
 test('three-model view streams independently, shows one failure and restores the saved comparison', async () => {
   await page.getByRole('button', { name: 'All three', exact: true }).click();
   await expect(page.locator('.answer-card')).toHaveCount(3);
   await electronApp.evaluate(({ ipcMain }) => {
     const results = [
       { provider: 'openai', model: 'gpt-6-astra', ok: true, text: '**Astra answer** \\(x^2\\)' },
-      { provider: 'claude', model: 'sonnet', ok: false, code: 'QUOTA_EXCEEDED', error: 'Claude quota reached' },
+      { provider: 'claude', model: 'opus', ok: false, code: 'QUOTA_EXCEEDED', error: 'Claude quota reached' },
       { provider: 'grok', model: 'grok-4.7', ok: true, text: '**Grok answer** $y=2$' },
     ];
     ipcMain.removeHandler('call-ai');

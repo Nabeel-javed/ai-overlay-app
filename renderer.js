@@ -82,7 +82,7 @@ function controls() {
   $('history-prev').disabled = !!activeId || changing || !history.length || historyIndex === 0;
   $('history-next').disabled = !!activeId || changing || historyIndex === -1;
   $('resume-history').disabled = !!activeId || changing || !viewing?.sessionId || viewing.provider === 'grok' || (viewing.provider === 'claude' && !viewing.messageId);
-  document.querySelectorAll('.provider-btn, .claude-model-btn').forEach(button => { button.disabled = changing; });
+  document.querySelectorAll('.provider-btn').forEach(button => { button.disabled = changing; });
 }
 function showSettings(value) {
   settings = value;
@@ -90,13 +90,9 @@ function showSettings(value) {
     const active = button.dataset.provider === (settings.mode === 'compare' ? 'compare' : settings.provider);
     button.classList.toggle('active', active); button.setAttribute('aria-pressed', active);
   });
-  document.querySelectorAll('.claude-model-btn').forEach(button => {
-    const active = button.dataset.model === settings.claudeModel;
-    button.classList.toggle('active', active); button.setAttribute('aria-pressed', active);
-  });
   $('astra-label').classList.toggle('hidden', settings.mode !== 'compare' && settings.provider !== 'openai');
   $('grok-label').classList.toggle('hidden', settings.mode === 'compare' || settings.provider !== 'grok');
-  $('claude-models').classList.toggle('hidden', settings.mode !== 'compare' && settings.provider !== 'claude');
+  $('claude-label').classList.toggle('hidden', settings.mode !== 'compare' && settings.provider !== 'claude');
   const connection = connections[settings.provider];
   $('connection-status').textContent = connection ? (connection.authenticated ? 'Connected' : 'Setup needed') : 'Checking…';
   $('connection-status').title = connection?.message || '';
@@ -106,7 +102,7 @@ function showSettings(value) {
     $('connection-status').title = Object.entries(connections).map(([provider, value]) => `${names[provider]}: ${value.message}`).join('\n');
   }
   if (!activeId && !viewing && !response && !comparison?.some(result => result.text || result.error)) {
-    showComparison(settings.mode === 'compare' ? ['openai', 'claude', 'grok'].map(provider => ({ provider, model: provider === 'claude' ? `Claude ${settings.claudeModel}` : names[provider] })) : null);
+    showComparison(settings.mode === 'compare' ? ['openai', 'claude', 'grok'].map(provider => ({ provider, model: provider === 'claude' ? 'Claude Opus' : names[provider] })) : null);
   }
   controls();
 }
@@ -177,7 +173,7 @@ async function submit() {
   const id = activeId;
   activeComparison = settings.mode === 'compare';
   showComparison(activeComparison ? ['openai', 'claude', 'grok'].map(provider => ({
-    provider, model: provider === 'claude' ? `Claude ${settings.claudeModel}` : names[provider], text: '', pending: true, startedAt: performance.now(),
+    provider, model: provider === 'claude' ? 'Claude Opus' : names[provider], text: '', pending: true, startedAt: performance.now(),
   })) : null);
   $('response-model').textContent = activeComparison ? 'Three independent answers' : 'Response';
   response = '';
@@ -234,7 +230,10 @@ function clearView() {
   if (settings) showSettings(settings);
 }
 api.onSettings(showSettings);
-api.onScreenshot(value => { setScreenshot(value); $('instructions-textarea').focus(); });
+api.onScreenshot(value => {
+  setScreenshot(value);
+  if (document.hasFocus()) $('instructions-textarea').focus();
+});
 api.onReset(clearView);
 api.onFocus(() => (screenshot ? $('instructions-textarea') : $('input-textarea')).focus());
 api.onNotification(notify);
@@ -264,7 +263,6 @@ api.onEvent(event => {
 });
 document.querySelectorAll('.provider-btn').forEach(button => button.addEventListener('click', () => changeSettings(
   button.dataset.provider === 'compare' ? { mode: 'compare' } : { provider: button.dataset.provider, mode: 'single' })));
-document.querySelectorAll('.claude-model-btn').forEach(button => button.addEventListener('click', () => changeSettings({ claudeModel: button.dataset.model })));
 $('submit-button').addEventListener('click', submit);
 $('stop-button').addEventListener('click', () => { status('Stopping…'); api.cancel(activeId).catch(error => notify(error.message)); });
 $('new-chat').addEventListener('click', () => reset().catch(error => notify(error.message)));

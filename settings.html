@@ -17,7 +17,7 @@
       <div class="row"><button data-connect="openai">Sign in with ChatGPT</button><button data-guide="openai">Setup guide</button></div>
     </section>
     <section class="setting-card">
-      <h2>Anthropic · Claude</h2>
+      <h2>Anthropic · Claude Opus</h2>
       <p id="claude-status" role="status">Checking…</p>
       <div class="row"><button data-connect="claude">Sign in with Claude</button><button data-guide="claude">Setup guide</button></div>
     </section>
@@ -31,12 +31,10 @@
       <label for="mode">Default view</label>
       <select id="mode"><option value="compare">All three · independent parallel answers</option><option value="single">Single provider · conversation</option></select>
       <label for="provider">Default provider</label>
-      <select id="provider"><option value="openai">OpenAI · GPT-6 Astra</option><option value="claude">Anthropic · Claude</option><option value="grok">xAI · Grok 4.7</option></select>
-      <label for="claude-model">Claude model</label>
-      <select id="claude-model"><option value="sonnet">Latest Sonnet</option><option value="opus">Latest Opus</option></select>
+      <select id="provider"><option value="openai">OpenAI · GPT-6 Astra</option><option value="claude">Anthropic · Claude Opus</option><option value="grok">xAI · Grok 4.7</option></select>
       <label for="effort">Astra and Grok reasoning</label>
       <select id="effort"><option value="low">Low · quicker answers</option><option value="medium">Medium</option><option value="high">High · more reasoning</option></select>
-      <p class="muted">Claude aliases follow the installed client's current models. Each answer shows the resolved model.</p>
+      <p class="muted">Each answer shows the model that responded.</p>
     </section>
     <section class="setting-card">
       <h2>Saved responses</h2>

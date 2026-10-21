@@ -1,7 +1,7 @@
 'use strict';
 const fs = require('node:fs/promises');
 const { cleanEnvironment, findBinary, collect, checkVersion, ProviderError, abortError } = require('./runtime');
-const { SYSTEM_PROMPT, userText } = require('../models');
+const { OPUS, SYSTEM_PROMPT, userText } = require('../models');
 
 function assistantText(message) {
   return (message.message?.content || []).filter(block => block.type === 'text').map(block => block.text).join('\n');
@@ -46,10 +46,10 @@ class ClaudeProvider {
     if (result.code !== 0) throw new ProviderError('Claude sign-in did not finish. Run claude auth login in Terminal, then refresh connections.', 'AUTH_REQUIRED');
     return { started: true, message: 'Sign-in completed. Refresh connections.' };
   }
-  async options(model, session) {
+  async options(session) {
     const { binary } = await this.runtime();
     return {
-      cwd: this.cwd, model, pathToClaudeCodeExecutable: binary,
+      cwd: this.cwd, model: OPUS, pathToClaudeCodeExecutable: binary,
       env: { ...cleanEnvironment(), CLAUDE_AGENT_SDK_CLIENT_APP: 'spectro/2.0.0' },
       systemPrompt: SYSTEM_PROMPT, tools: [], skills: [], settingSources: [], mcpServers: {},
       strictMcpConfig: true, permissionMode: 'dontAsk', canUseTool: async () => ({ behavior: 'deny', message: 'Tools are disabled in Spectro.' }),
@@ -74,7 +74,7 @@ class ClaudeProvider {
     async function* messages() {
       yield { type: 'user', message: { role: 'user', content }, parent_tool_use_id: null, session_id: session?.sessionId || '' };
     }
-    const q = query({ prompt: messages(), options: await this.options(request.model, session) });
+    const q = query({ prompt: messages(), options: await this.options(session) });
     this.active.add(q);
     let killTimer;
     const cancel = () => {

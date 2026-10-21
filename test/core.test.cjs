@@ -23,13 +23,16 @@ function fixture(t, legacy) {
 const payload = { requestId: 'test-1', text: 'A question', instructions: '', screenshot: null };
 function deferred() { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; }
 
-test('migration pins Astra, preserves Claude selection and history, excludes credentials', () => {
+test('migration pins Astra and Opus, preserves history, excludes credentials', () => {
   const migrated = migrateLegacyData({ apiProvider: 'claude', claudeUseOpus: true, openaiModel: 'o4-mini', openaiApiKey: 'private', responseHistory: [{ id: 123, response: 'existing answer' }] });
   assert.equal(migrated.settings.openaiModel, ASTRA);
   assert.equal(migrated.settings.claudeModel, 'opus');
   assert.equal(migrated.responseHistory[0].response, 'existing answer');
   assert.equal(migrated.openaiApiKey, undefined);
   assert.equal(normalizeSettings({ apiProvider: 'removed' }).provider, 'openai');
+  for (const old of [{}, { claudeUseOpus: false }, { claudeModel: 'sonnet' }]) {
+    assert.equal(normalizeSettings(old).claudeModel, 'opus');
+  }
 });
 test('request validation rejects untrusted image URLs and oversized inputs', () => {
   assert.throws(() => validateRequest({ ...payload, screenshot: 'file:///etc/passwd' }));
@@ -87,6 +90,23 @@ test('restoring history excludes new requests and reset waits for the fork', asy
   await resetting;
   assert.equal(storage.getSession('openai'), null);
 });
+test('an old Sonnet conversation continues with Opus and retains its original history label', async t => {
+  const storage = fixture(t);
+  storage.store.set('settings', { ...storage.getSettings(), claudeModel: 'sonnet' });
+  const entry = storage.archive({ provider: 'claude', model: 'claude-sonnet-5-5', selectedModel: 'sonnet', response: 'old', sessionId: 'old', messageId: 'first' });
+  const controller = new RequestController(storage, { claude: {
+    fork: async () => ({ sessionId: 'fork' }),
+    run: async (request, session) => {
+      assert.equal(request.model, 'opus');
+      assert.equal(session.sessionId, 'fork');
+      return { text: 'Opus follow-up', actualModel: 'claude-opus-5-5', sessionId: 'fork' };
+    },
+  } }, () => {});
+  assert.equal((await controller.restore(entry.id)).claudeModel, 'opus');
+  assert.equal((await controller.submit(payload)).ok, true);
+  assert.equal(storage.entry(entry.id).model, 'claude-sonnet-5-5');
+  assert.throws(() => storage.setSettings({ ...storage.getSettings(), claudeModel: 'sonnet' }));
+});
 test('attachments are encrypted, authenticated, deduplicated, and pruned', t => {
   const storage = fixture(t);
   const screenshot = 'data:image/png;base64,aGVsbG8=';
@@ -114,7 +134,7 @@ test('Claude synthetic success containing a spend limit is an error', () => {
   const message = { type: 'result', subtype: 'success', result: "You've hit your monthly spend limit", modelUsage: {} };
   assert.equal(classifyClaudeMessage(message).code, 'QUOTA_EXCEEDED');
   assert.equal(classifyClaudeMessage({ ...message, is_error: true }).code, 'QUOTA_EXCEEDED');
-  assert.equal(classifyClaudeMessage({ ...message, modelUsage: { 'claude-sonnet-5-5': {} } }), null);
+  assert.equal(classifyClaudeMessage({ ...message, modelUsage: { 'claude-opus-5-5': {} } }), null);
   assert.equal(classifyClaudeMessage({ type: 'assistant', error: 'rate_limit', message: { content: [{ type: 'text', text: 'Limit reached' }] } }).code, 'QUOTA_EXCEEDED');
 });
 test('Claude adapter sends image blocks, keeps session IDs and streams only text', async () => {
@@ -133,7 +153,7 @@ test('Claude adapter sends image blocks, keeps session IDs and streams only text
     };
   });
   provider.status = async () => ({ authenticated: true });
-  provider.options = async model => ({ model });
+  provider.runtime = async () => ({ binary: '/unused/claude' });
   const events = [];
   const result = await provider.run({ ...payload, model: 'opus', screenshot: 'data:image/png;base64,aGVsbG8=' }, null, { signal: new AbortController().signal, emit: event => events.push(event) });
   assert.equal(sent.message.content[1].source.media_type, 'image/png');
@@ -168,7 +188,7 @@ test('comparison dispatches identical image requests concurrently and saves inde
   const pending = controller.submit({ ...payload, screenshot: image });
   assert.equal(started.length, 3, 'All adapters start before any finishes');
   assert.ok(started.every(({ request, session }) => request.text === payload.text && request.screenshot === image && session === null));
-  storage.setSettings({ ...storage.getSettings(), mode: 'single', claudeModel: 'sonnet' });
+  storage.setSettings({ ...storage.getSettings(), mode: 'single', effort: 'high' });
   assert.equal(started[1].request.model, 'opus');
   gates.grok.resolve(); await new Promise(setImmediate);
   assert.ok(events.some(event => event.provider === 'grok' && event.type === 'finished'));

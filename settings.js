@@ -17,7 +17,7 @@ async function refresh() {
 api.getSettings().then(settings => {
   current = settings; $('provider').value = settings.provider;
   $('mode').value = settings.mode;
-  $('claude-model').value = settings.claudeModel; $('effort').value = settings.effort;
+  $('effort').value = settings.effort;
   $('save-button').disabled = false;
 }).catch(error => message(error.message));
 refresh();
@@ -32,7 +32,7 @@ document.querySelectorAll('[data-guide]').forEach(button => button.addEventListe
 $('save-button').addEventListener('click', async () => {
   $('save-button').disabled = true;
   try {
-    current = await api.saveSettings({ ...current, mode: $('mode').value, provider: $('provider').value, claudeModel: $('claude-model').value, effort: $('effort').value });
+    current = await api.saveSettings({ ...current, mode: $('mode').value, provider: $('provider').value, effort: $('effort').value });
     message('Saved'); api.closeWindow();
   } catch (error) { message(error.message); $('save-button').disabled = false; }
 });

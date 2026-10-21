@@ -7,10 +7,10 @@ A personal macOS overlay for asking questions about text and screenshots using y
 | Provider | Model | Runtime |
 | --- | --- | --- |
 | OpenAI | **GPT-6 Astra** (`gpt-6-astra`) | Official Codex app-server, signed in with ChatGPT |
-| Anthropic | **Sonnet / Opus**, switchable | Official Claude Agent SDK and your installed Claude Code |
+| Anthropic | **Opus** | Official Claude Agent SDK and your installed Claude Code |
 | xAI | **Grok 4.7** (`grok-4.7`) | Official Grok CLI, signed in with Grok |
 
-Claude uses the official `sonnet` and `opus` aliases, so new versions follow the installed client's routing. The response header and saved history show the model reported by the provider. OpenAI stays on Astra; the old o4-mini/GPT-4.1 picker is removed. Gemini and DeepSeek are no longer available.
+Claude uses the official `opus` alias, so new versions follow the installed client's routing. Existing Sonnet settings migrate to Opus; resuming an older Claude conversation also uses Opus, while archived answers keep their original model labels. The response header and saved history show the model reported by the provider. OpenAI stays on Astra; the old o4-mini/GPT-4.1 picker is removed. Gemini and DeepSeek are no longer available.
 
 Grok 4.7 is the latest flagship model listed in the [official xAI catalogue](https://docs.x.ai/developers/models) checked on 2026-10-20. Its [official CLI](https://docs.x.ai/build/cli/reference) supports subscription OAuth, image prompts and streaming output.
 
@@ -36,7 +36,7 @@ Requirements: Apple Silicon macOS, Node.js **22.12+**, Codex **0.163.0+**, Claud
    npm start
    ```
 
-Open **Settings → Refresh connections** to check all three clients. **All three** is the default; select OpenAI, Claude or Grok for a single-provider conversation. Sonnet/Opus selection also applies to comparison rounds. Client binaries are resolved directly; shell aliases and environment variables for API keys or alternate gateways are not inherited.
+Open **Settings → Refresh connections** to check all three clients. **All three** is the default; select OpenAI, Claude or Grok for a single-provider conversation. Claude uses Opus in both views. Client binaries are resolved directly; shell aliases and environment variables for API keys or alternate gateways are not inherited.
 
 To create a local Apple Silicon app and DMG:
 
@@ -51,9 +51,10 @@ Outputs are under `dist/`. Local builds are unsigned unless you configure your o
 - Type a question, capture a screenshot, attach a PNG/JPEG, or paste an image, then press **Send**. Screen capture requires macOS Screen Recording permission. Captures target the display under the pointer, hide the app during capture, and are sent only when you submit.
 - **All three:** dispatches identical text, instructions and image concurrently. Each model starts with fresh conversation context, streams independently, and has its own Copy/Stop controls. A failure or timeout leaves the other models running. **Stop** or **Esc** cancels all remaining answers.
 - Finished answers render as sanitized Markdown and LaTeX. Identical complete text is labelled as agreement, never as verified correctness. Different wording is left for you to compare; there is no extra judge-model request or semantic scoring.
-- **Single provider:** OpenAI, Claude and Grok keep separate conversations across restarts. Switching Sonnet/Opus continues the Claude conversation. **New chat** resets all three. Comparison rounds neither read nor modify those conversations.
+- **Single provider:** OpenAI, Claude and Grok keep separate conversations across restarts. **New chat** resets all three. Comparison rounds neither read nor modify those conversations.
 - History keeps the latest 50 single answers or comparison rounds. A round is saved if at least one model completes; failed cards retain their error, not partial output. **Continue this chat** forks saved Astra/Claude answers at that exact turn. Saved Grok answers and comparison rounds are review-only; current Grok conversations still support normal follow-ups and restart/resume.
 - Changing the selected provider/model during a request affects the next send. In-flight requests retain their starting settings. Higher reasoning effort can improve difficult answers but adds latency; Low is the default for Astra and Grok.
+- **Window focus:** Cmd+Shift+H shows the overlay without requesting focus. Screenshot completion also restores the overlay and any previously visible Settings window without activating them, including after a capture error. Cmd+Shift+O explicitly focuses the overlay for typing; clicking the overlay or opening Settings can also take focus. This reduces interruptions during normal desktop use; it does not guarantee compatibility with browsers that require continuous focus.
 
 ## Screen-sharing privacy
 
@@ -67,8 +68,8 @@ Run `npm run test:privacy` (or append `-- --packaged` for the built app). It com
 
 | Action | macOS shortcut |
 | --- | --- |
-| Show / focus | Cmd+Shift+O |
-| Hide / show all app windows | Cmd+Shift+H |
+| Show and focus for typing | Cmd+Shift+O |
+| Hide all windows / show overlay without focus | Cmd+Shift+H |
 | Always hide all app windows | Cmd+Shift+Escape |
 | Capture screen | Cmd+Shift+S |
 | Send | Cmd+Enter |
@@ -77,7 +78,6 @@ Run `npm run test:privacy` (or append `-- --packaged` for the built app). It com
 | Switch provider | Cmd+Shift+P |
 | All three | Cmd+0 |
 | OpenAI / Claude / Grok | Cmd+1 / Cmd+4 / Cmd+5 |
-| Switch Sonnet / Opus | Cmd+Shift+R |
 | Browse saved responses | Cmd+Up / Cmd+Down |
 | Copy answer | Cmd+Shift+C |
 | Move overlay | Cmd+Option+Arrow |
@@ -118,7 +118,7 @@ npm run pack -- --mac --arm64
 node scripts/packaged-check.cjs # Real requests through the built Mac app
 ```
 
-Live tests submit only synthetic text and a generated red image, not your desktop. They cover Astra image input, restart/resume, history forking and cancellation, plus Sonnet/Opus image input and Grok image, restart/resume and cancellation. The packaged check sends one image round to all three and checks Opus separately. A provider quota block is reported as **blocked**, not as successful inference. The packaged check also accepts `--capture` to verify a local desktop preview after all provider requests; that capture is removed without being sent or saved.
+Live tests submit only synthetic text and a generated red image, not your desktop. They cover Astra image input, restart/resume, history forking and cancellation, plus Opus image input and Grok image, restart/resume and cancellation. The packaged check sends one image round to all three and checks Opus separately. A provider quota block is reported as **blocked**, not as successful inference. The packaged check also accepts `--capture` to verify a local desktop preview after all provider requests; that capture is removed without being sent or saved.
 
 Validated on 2026-10-20 with Electron 44.9.1, Codex 0.163.0, Claude Code 2.1.304, Claude Agent SDK 0.3.304 and Grok CLI 1.0.62. A live parallel screenshot round returned the correct test colour from GPT-6 Astra, Claude Sonnet 5.5 and Grok 4.7. All three adapters started within the same millisecond; that tiny test completed in approximately 2.5–5 seconds, which is not a general latency guarantee. Claude's earlier monthly quota block did not recur in this check. Grok image input, restart/resume and cancellation also passed live checks.
 
