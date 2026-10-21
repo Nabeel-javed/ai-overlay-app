@@ -220,15 +220,16 @@ async function submit() {
 async function reset() {
   await api.newChat();
 }
-function clearView() {
+function clearView(message = 'New conversations started') {
   historyGeneration++;
   activeId = null; response = ''; viewing = null; historyIndex = -1; draft = null;
   showComparison(null);
-  $('input-textarea').value = ''; setScreenshot(null); api.removeScreenshot();
+  $('input-textarea').value = ''; setScreenshot(null);
   window.MathJax.typesetClear?.([$('response-textarea')]);
   $('response-textarea').textContent = '';
   $('response-model').textContent = 'Response';
-  status('New conversations started'); historyLabel(); $('input-textarea').focus();
+  status(message); historyLabel();
+  if (document.hasFocus()) $('input-textarea').focus();
   if (settings) showSettings(settings);
 }
 api.onSettings(showSettings);
@@ -237,6 +238,10 @@ api.onScreenshot(value => {
   if (document.hasFocus()) $('instructions-textarea').focus();
 });
 api.onReset(clearView);
+api.onRefresh(() => {
+  if (activeId || changing) return notify('Wait for the current action to finish before refreshing.');
+  clearView('Screen cleared · conversations kept');
+});
 api.onFocus(() => (screenshot ? $('instructions-textarea') : $('input-textarea')).focus());
 api.onNotification(notify);
 api.onHistoryChanged(() => loadHistory().catch(error => notify(error.message)));

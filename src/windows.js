@@ -7,6 +7,7 @@ class Windows {
     this.storage = storage; this.root = root; this.newChat = newChat;
     this.main = null; this.settings = null; this.capturing = false;
     this.visibilityGeneration = 0;
+    this.screenshotGeneration = 0;
   }
   secure(window) {
     window.setContentProtection(true);
@@ -104,6 +105,10 @@ class Windows {
     if (attached) { this.heightBeforeCapture ??= height; this.main.setSize(width, Math.min(area.height, Math.max(height, 780))); }
     else if (this.heightBeforeCapture) { this.main.setSize(width, this.heightBeforeCapture); this.heightBeforeCapture = null; }
   }
+  clearScreenshot() {
+    this.screenshotGeneration++;
+    this.resizeForScreenshot(false);
+  }
   async capture() {
     if (this.capturing) return;
     if (process.platform === 'darwin' && systemPreferences.getMediaAccessStatus('screen') === 'denied') {
@@ -111,6 +116,7 @@ class Windows {
     }
     this.capturing = true;
     const generation = this.visibilityGeneration;
+    const screenshotGeneration = this.screenshotGeneration;
     const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
     const settingsVisible = this.settings?.isVisible();
     this.main?.hide(); this.settings?.hide();
@@ -119,6 +125,7 @@ class Windows {
       const ratio = Math.min(1, 2000 / Math.max(display.size.width, display.size.height));
       const sources = await desktopCapturer.getSources({ types: ['screen'],
         thumbnailSize: { width: Math.round(display.size.width * ratio), height: Math.round(display.size.height * ratio) } });
+      if (screenshotGeneration !== this.screenshotGeneration) return { ok: false, cancelled: true };
       const source = sources.find(item => item.display_id === String(display.id)) || (sources.length === 1 ? sources[0] : null);
       if (!source || source.thumbnail.isEmpty()) throw new Error('No screenshot was captured. Check macOS Screen Recording permission.');
       const dataUrl = `data:image/jpeg;base64,${source.thumbnail.toJPEG(85).toString('base64')}`;

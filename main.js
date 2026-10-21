@@ -40,7 +40,15 @@ async function openLoginUrl(value) {
   if (url.protocol !== 'https:' || !['auth.openai.com', 'auth0.openai.com', 'chatgpt.com'].includes(url.hostname)) throw new Error('Unexpected sign-in URL.');
   await shell.openExternal(url.href);
 }
-async function newChat() { await requests.reset(); windows.send('reset-tool'); }
+async function newChat() { await requests.reset(); windows.clearScreenshot(); windows.send('reset-tool'); }
+function refreshView() {
+  if (requests.active || requests.restoring) {
+    windows.notify('Wait for the response or stop it before refreshing.');
+    return;
+  }
+  windows.clearScreenshot();
+  windows.send('refresh-tool');
+}
 function registerIpc() {
   handle('get-settings', () => storage.getSettings());
   handle('save-settings', setSettings);
@@ -63,7 +71,7 @@ function registerIpc() {
   on('dismiss-overlay', () => windows.hide());
   on('open-settings', () => windows.openSettings());
   on('close-settings-window', () => windows.settings?.close());
-  on('remove-screenshot', () => windows.resizeForScreenshot(false));
+  on('remove-screenshot', () => windows.clearScreenshot());
   on('open-setup-guide', provider => {
     const urls = { openai: 'https://learn.chatgpt.com/docs/codex-cli', claude: 'https://code.claude.com/docs/en/setup', grok: 'https://docs.x.ai/build/cli' };
     if (urls[provider]) shell.openExternal(urls[provider]);
@@ -71,16 +79,22 @@ function registerIpc() {
 }
 function registerShortcuts() {
   const choose = provider => setSettings({ ...storage.getSettings(), provider, mode: 'single' });
+  const cycle = () => {
+    const settings = storage.getSettings();
+    const provider = settings.mode === 'compare' ? PROVIDERS[0] : PROVIDERS[PROVIDERS.indexOf(settings.provider) + 1];
+    setSettings({ ...settings, ...(provider ? { provider, mode: 'single' } : { mode: 'compare' }) });
+  };
   const actions = {
     'CommandOrControl+Shift+O': () => windows.focus(),
     'CommandOrControl+Shift+H': () => windows.toggle(),
     'CommandOrControl+Shift+Escape': () => windows.hide(),
     'CommandOrControl+Shift+S': () => windows.capture().catch(error => windows.notify(error.message)),
-    'CommandOrControl+Shift+P': () => choose(PROVIDERS[(PROVIDERS.indexOf(storage.getSettings().provider) + 1) % PROVIDERS.length]),
+    'CommandOrControl+Shift+R': refreshView,
+    'CommandOrControl+Shift+P': cycle,
     'CommandOrControl+0': () => setSettings({ ...storage.getSettings(), mode: 'compare' }),
     'CommandOrControl+1': () => choose('openai'),
-    'CommandOrControl+4': () => choose('claude'),
-    'CommandOrControl+5': () => choose('grok'),
+    'CommandOrControl+2': () => choose('claude'),
+    'CommandOrControl+3': () => choose('grok'),
     'CommandOrControl+Alt+Up': () => windows.move(0, -20),
     'CommandOrControl+Alt+Down': () => windows.move(0, 20),
     'CommandOrControl+Alt+Left': () => windows.move(-20, 0),

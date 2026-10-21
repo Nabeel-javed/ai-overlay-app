@@ -66,25 +66,28 @@ Run `npm run test:privacy` (or append `-- --packaged` for the built app). It com
 
 ## Keyboard shortcuts
 
-| Action | macOS shortcut |
-| --- | --- |
-| Show and focus for typing | Cmd+Shift+O |
-| Hide all windows / show overlay without focus | Cmd+Shift+H |
-| Always hide all app windows | Cmd+Shift+Escape |
-| Capture screen | Cmd+Shift+S |
-| Send | Cmd+Enter |
-| Stop; otherwise hide | Esc |
-| New chat, while overlay focused | Cmd+R |
-| Switch provider | Cmd+Shift+P |
-| All three | Cmd+0 |
-| OpenAI / Claude / Grok | Cmd+1 / Cmd+4 / Cmd+5 |
-| Browse saved responses | Cmd+Up / Cmd+Down |
-| Copy answer | Cmd+Shift+C |
-| Move overlay | Cmd+Option+Arrow |
-| Opacity | Cmd+[ / Cmd+] |
-| Scroll answer | Page Up / Page Down, Option+Up / Option+Down |
+| Action | macOS shortcut | Windows shortcut |
+| --- | --- | --- |
+| Show and focus for typing | Cmd+Shift+O | Ctrl+Shift+O |
+| Hide all windows / show overlay without focus | Cmd+Shift+H | Ctrl+Shift+H |
+| Always hide all app windows | Cmd+Shift+Escape | Ctrl+Shift+Escape (conflicts with Task Manager) |
+| Capture screen | Cmd+Shift+S | Ctrl+Shift+S |
+| Refresh screen, keep conversations | Cmd+Shift+R | Ctrl+Shift+R |
+| Send, while overlay focused | Cmd+Enter | Ctrl+Enter |
+| Stop; otherwise hide, while overlay focused | Esc | Esc |
+| New chat, while overlay focused | Cmd+R | Ctrl+R |
+| Cycle All three → OpenAI → Claude → Grok → All three | Cmd+Shift+P | Ctrl+Shift+P |
+| All three | Cmd+0 | Ctrl+0 |
+| OpenAI / Claude / Grok | Cmd+1 / Cmd+2 / Cmd+3 | Ctrl+1 / Ctrl+2 / Ctrl+3 |
+| Browse saved responses, while overlay focused | Cmd+Up / Cmd+Down | Ctrl+Up / Ctrl+Down |
+| Copy answer, while overlay focused | Cmd+Shift+C | Ctrl+Shift+C |
+| Move overlay | Cmd+Option+Arrow | Ctrl+Alt+Arrow |
+| Opacity | Cmd+[ / Cmd+] | Ctrl+[ / Ctrl+] |
+| Scroll single-provider answer, while overlay focused | Page Up / Page Down, Option+Up / Option+Down | Page Up / Page Down, Alt+Up / Alt+Down |
 
 Shortcuts may be unavailable if another app already registered them. Window position, size, and opacity are preserved.
+
+Refresh clears the current question, answers and screenshot without reloading the app or resetting model conversations. It also discards a pending screenshot so it cannot reattach after refresh. Refresh waits for you to finish or stop an active response; **New chat** resets conversations. Windows mappings are configured but have not been validated on Windows; Ctrl+Shift+Escape is a known system conflict.
 
 ## Storage and migration
 

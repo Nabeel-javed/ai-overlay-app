@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onSettings: callback => listen('settings-changed', callback),
   onScreenshot: callback => listen('screenshot-captured', callback),
   onReset: callback => listen('reset-tool', callback),
+  onRefresh: callback => listen('refresh-tool', callback),
   onFocus: callback => listen('focus-input', callback),
   onNotification: callback => listen('notification', callback),
   onHistoryChanged: callback => listen('history-changed', callback),
