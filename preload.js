@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onEvent: callback => listen('ai-event', callback),
   onSettings: callback => listen('settings-changed', callback),
   onScreenshot: callback => listen('screenshot-captured', callback),
+  onRemoveAttachment: callback => listen('remove-attachment', callback),
   onReset: callback => listen('reset-tool', callback),
   onRefresh: callback => listen('refresh-tool', callback),
   onFocus: callback => listen('focus-input', callback),

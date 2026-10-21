@@ -72,6 +72,7 @@ Run `npm run test:privacy` (or append `-- --packaged` for the built app). It com
 | Hide all windows / show overlay without focus | Cmd+Shift+H | Ctrl+Shift+H |
 | Always hide all app windows | Cmd+Shift+Escape | Ctrl+Shift+Escape (conflicts with Task Manager) |
 | Capture screen | Cmd+Shift+S | Ctrl+Shift+S |
+| Remove current attachment | Cmd+Esc | Ctrl+Esc (conflicts with Start menu) |
 | Refresh screen, keep conversations | Cmd+Shift+R | Ctrl+Shift+R |
 | Send, while overlay focused | Cmd+Enter | Ctrl+Enter |
 | Stop; otherwise hide, while overlay focused | Esc | Esc |
@@ -86,6 +87,8 @@ Run `npm run test:privacy` (or append `-- --packaged` for the built app). It com
 | Scroll single-provider answer, while overlay focused | Page Up / Page Down, Option+Up / Option+Down | Page Up / Page Down, Alt+Up / Alt+Down |
 
 Shortcuts may be unavailable if another app already registered them. Window position, size, and opacity are preserved.
+
+Cmd+Esc / Ctrl+Esc removes the current attachment and its image instructions, keeping the question, answers, and conversations. It also discards a pending capture or image import. An attachment already sent with an active request remains part of that request; removing it does not cancel the response. Windows reserves Ctrl+Esc for the [Start menu](https://support.microsoft.com/en-au/windows/keyboard-shortcuts-in-windows-dcc61a57-8ff0-cffe-9796-cb9706c75eec), so Windows may intercept this shortcut.
 
 Refresh clears the current question, answers and screenshot without reloading the app or resetting model conversations. It also discards a pending screenshot so it cannot reattach after refresh. Refresh waits for you to finish or stop an active response; **New chat** resets conversations. Windows mappings are configured but have not been validated on Windows; Ctrl+Shift+Escape is a known system conflict.
 

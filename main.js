@@ -88,6 +88,7 @@ function registerShortcuts() {
     'CommandOrControl+Shift+O': () => windows.focus(),
     'CommandOrControl+Shift+H': () => windows.toggle(),
     'CommandOrControl+Shift+Escape': () => windows.hide(),
+    'CommandOrControl+Escape': () => { windows.clearScreenshot(); windows.send('remove-attachment'); },
     'CommandOrControl+Shift+S': () => windows.capture().catch(error => windows.notify(error.message)),
     'CommandOrControl+Shift+R': refreshView,
     'CommandOrControl+Shift+P': cycle,

@@ -121,6 +121,10 @@ function setScreenshot(value) {
   $('screenshot-section').classList.toggle('hidden', !value);
   controls();
 }
+function clearAttachment() {
+  historyGeneration++;
+  setScreenshot(null);
+}
 async function attachImage(file) {
   if (activeId || viewing || !file) return;
   if (!['image/png', 'image/jpeg'].includes(file.type) || file.size > 6 * 1024 * 1024) return notify('Use a PNG or JPEG image smaller than 6 MB.');
@@ -237,6 +241,7 @@ api.onScreenshot(value => {
   setScreenshot(value);
   if (document.hasFocus()) $('instructions-textarea').focus();
 });
+api.onRemoveAttachment(clearAttachment);
 api.onReset(clearView);
 api.onRefresh(() => {
   if (activeId || changing) return notify('Wait for the current action to finish before refreshing.');
@@ -286,7 +291,7 @@ document.addEventListener('paste', event => {
     event.preventDefault(); attachImage(image.getAsFile()).catch(error => notify(error.message));
   }
 });
-$('remove-screenshot-button').addEventListener('click', () => { setScreenshot(null); api.removeScreenshot(); });
+$('remove-screenshot-button').addEventListener('click', () => { clearAttachment(); api.removeScreenshot(); });
 $('input-textarea').addEventListener('input', controls);
 $('history-prev').addEventListener('click', () => navigate(-1).catch(error => notify(error.message)));
 $('history-next').addEventListener('click', () => navigate(1).catch(error => notify(error.message)));
@@ -304,6 +309,9 @@ $('resume-history').addEventListener('click', async () => {
 document.addEventListener('keydown', event => {
   const command = api.platform === 'darwin' ? event.metaKey : event.ctrlKey;
   if (command && event.key === 'Enter') { event.preventDefault(); submit(); }
+  else if (command && !event.shiftKey && !event.altKey && event.key === 'Escape') {
+    event.preventDefault(); $('remove-screenshot-button').click();
+  }
   else if (command && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'r') {
     event.preventDefault(); reset().catch(error => notify(error.message));
   }
